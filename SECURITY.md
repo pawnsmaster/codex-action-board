@@ -1,0 +1,33 @@
+# Security Policy
+
+## Scope
+
+Codex RTL Toolkit changes local rendering only. It does not read, store, upload, or modify conversation data.
+
+## Desktop Security Model
+
+The desktop workflow uses Chromium's DevTools Protocol because Codex Desktop does not expose a documented CSS-extension API.
+
+The launcher binds DevTools to localhost only:
+
+```powershell
+--remote-debugging-address=127.0.0.1
+```
+
+The injector also refuses non-local WebSocket targets. Do not expose the debugging port to a network interface, reverse proxy, tunnel, or shared machine.
+
+## Safe Usage
+
+- Run the launcher only on your own machine.
+- Close Codex when you no longer need the injected session.
+- Do not change `CODEX_RTL_PORT` to a privileged or externally exposed port.
+- Review changes before running scripts from forks.
+
+## Reporting Issues
+
+Please open a GitHub issue with:
+
+- Operating system and Codex version
+- Whether you used Desktop or Browser Extension mode
+- A screenshot with sensitive content removed
+- Steps to reproduce

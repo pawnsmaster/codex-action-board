@@ -1,0 +1,68 @@
+:root {
+  --codex-rtl-text-align: right;
+}
+
+[data-codex-rtl-root="true"] [data-codex-rtl="true"],
+[data-codex-rtl-root="true"] [dir="rtl"] {
+  direction: rtl !important;
+  text-align: var(--codex-rtl-text-align) !important;
+  unicode-bidi: plaintext !important;
+}
+
+[data-codex-rtl-root="true"] [data-message-author-role="user" i] [data-codex-rtl="true"],
+[data-codex-rtl-root="true"] [data-message-author-role="user" i] [data-codex-bidi="auto"] {
+  direction: rtl !important;
+  text-align: right !important;
+  unicode-bidi: plaintext !important;
+}
+
+[data-codex-rtl-root="true"] [data-codex-bidi="auto"] {
+  unicode-bidi: plaintext !important;
+}
+
+[data-codex-rtl-root="true"] pre,
+[data-codex-rtl-root="true"] pre *,
+[data-codex-rtl-root="true"] pre [dir],
+[data-codex-rtl-root="true"] code,
+[data-codex-rtl-root="true"] code *,
+[data-codex-rtl-root="true"] kbd,
+[data-codex-rtl-root="true"] samp,
+[data-codex-rtl-root="true"] textarea,
+[data-codex-rtl-root="true"] input,
+[data-codex-rtl-root="true"] [role="textbox"],
+[data-codex-rtl-root="true"] [data-testid*="code" i],
+[data-codex-rtl-root="true"] [data-testid*="code" i] *,
+[data-codex-rtl-root="true"] [data-testid*="terminal"],
+[data-codex-rtl-root="true"] [class*="code" i],
+[data-codex-rtl-root="true"] [class*="code" i] *,
+[data-codex-rtl-root="true"] [class*="highlight" i],
+[data-codex-rtl-root="true"] [class*="highlight" i] *,
+[data-codex-rtl-root="true"] [class*="shiki" i],
+[data-codex-rtl-root="true"] [class*="shiki" i] *,
+[data-codex-rtl-root="true"] [class*="terminal" i],
+[data-codex-rtl-root="true"] [class*="monaco" i] {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: isolate !important;
+}
+
+[data-codex-rtl-root="true"] pre,
+[data-codex-rtl-root="true"] [data-testid*="code" i],
+[data-codex-rtl-root="true"] [class*="code" i],
+[data-codex-rtl-root="true"] [class*="highlight" i],
+[data-codex-rtl-root="true"] [class*="shiki" i] {
+  tab-size: 2;
+  white-space: pre !important;
+}
+
+[data-codex-rtl-root="true"] p,
+[data-codex-rtl-root="true"] li,
+[data-codex-rtl-root="true"] blockquote,
+[data-codex-rtl-root="true"] h1,
+[data-codex-rtl-root="true"] h2,
+[data-codex-rtl-root="true"] h3,
+[data-codex-rtl-root="true"] h4,
+[data-codex-rtl-root="true"] h5,
+[data-codex-rtl-root="true"] h6 {
+  unicode-bidi: plaintext !important;
+}

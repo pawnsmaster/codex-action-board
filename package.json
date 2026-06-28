@@ -1,0 +1,22 @@
+{
+  "name": "codex-rtl-toolkit",
+  "version": "0.1.0",
+  "description": "Local RTL rendering fixes for Arabic/English Codex conversations.",
+  "type": "module",
+  "scripts": {
+    "build:extension": "node scripts/sync-extension.mjs",
+    "inject": "node desktop/inject.mjs",
+    "check": "node --check desktop/inject.mjs && node --check src/injected.js && node --check scripts/sync-extension.mjs && node --check scripts/check-extension-sync.mjs && node --check extension/injected.js && node scripts/check-extension-sync.mjs && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-powershell.ps1"
+  },
+  "keywords": [
+    "codex",
+    "rtl",
+    "arabic",
+    "bidi",
+    "chrome-extension"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
