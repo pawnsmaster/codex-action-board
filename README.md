@@ -13,6 +13,12 @@ This is a community workaround. It does not modify OpenAI accounts or messages. 
 
 Codex Desktop does not currently expose a documented plugin API for changing the app CSS. The desktop path therefore needs Codex to be launched with a local remote debugging port bound to `127.0.0.1`.
 
+## Current Release
+
+Current version: `v0.1.1`.
+
+This release includes the RTL rendering fix, a safer first-run dependency install using `npm ci --ignore-scripts`, and published security review notes.
+
 ## Desktop Quick Start
 
 Requirements:
@@ -109,6 +115,12 @@ Before opening a PR or release:
 npm run check
 ```
 
+Security review artifacts:
+
+- `SECURITY.md`: safe usage and reporting policy.
+- `SECURITY_AUDIT.md`: audit report for the current codebase.
+- `docs/security-checklist.md`: release checklist.
+
 ## Suggested Repo Name
 
 ```text
@@ -122,7 +134,9 @@ codex-rtl-toolkit
 - `extension/`: unpacked Chrome/Edge extension.
 - `scripts/`: sync and validation helpers.
 - `docs/architecture.md`: implementation details.
+- `docs/security-checklist.md`: release safety checklist.
 - `SECURITY.md`: threat model and safe usage.
+- `SECURITY_AUDIT.md`: security audit report.
 
 ## License
 

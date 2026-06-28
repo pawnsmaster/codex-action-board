@@ -22,6 +22,17 @@ The injector also refuses non-local WebSocket targets. Do not expose the debuggi
 - Close Codex when you no longer need the injected session.
 - Do not change `CODEX_RTL_PORT` to a privileged or externally exposed port.
 - Review changes before running scripts from forks.
+- Prefer official GitHub releases from this repository over copied scripts or modified ZIP files.
+
+## Release Safety
+
+Release archives should not include local tooling, GitHub authentication config, `node_modules`, or generated logs. Before tagging, run:
+
+```powershell
+npm ci --ignore-scripts
+npm run check
+npm audit --audit-level=moderate
+```
 
 ## Reporting Issues
 
