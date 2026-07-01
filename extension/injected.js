@@ -106,16 +106,73 @@
     applyDirection(el);
   }
 
+  function isolateLatinRuns(el) {
+    if (!el?.dataset.codexRtl || isCodeLike(el) || isInteractive(el)) return;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    let node;
+
+    while ((node = walker.nextNode())) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest(`${CODE_BLOCK_SELECTOR}, [data-codex-ltr-run], ${INTERACTIVE_SELECTOR}`)) continue;
+      if (LATIN_RE.test(node.textContent || "")) textNodes.push(node);
+    }
+
+    const latinRun = /[A-Za-z][A-Za-z0-9._:/\\+@#-]*(?:\s+[A-Za-z][A-Za-z0-9._:/\\+@#-]*)*/g;
+    for (const textNode of textNodes) {
+      const text = textNode.textContent || "";
+      const matches = Array.from(text.matchAll(latinRun));
+      if (matches.length === 0) continue;
+
+      const fragment = document.createDocumentFragment();
+      let offset = 0;
+      for (const match of matches) {
+        const index = match.index || 0;
+        fragment.append(text.slice(offset, index));
+        const trailingPunctuation = match[0].match(/[.,;:!?]+$/)?.[0] || "";
+        const latinText = trailingPunctuation
+          ? match[0].slice(0, -trailingPunctuation.length)
+          : match[0];
+        const bdi = document.createElement("bdi");
+        bdi.dir = "ltr";
+        bdi.dataset.codexLtrRun = "true";
+        bdi.textContent = latinText;
+        fragment.append(bdi);
+        fragment.append(trailingPunctuation);
+        offset = index + match[0].length;
+      }
+      fragment.append(text.slice(offset));
+      textNode.replaceWith(fragment);
+    }
+  }
+
+  function applyMarkdownCodeDirection(code) {
+    if (!code?.querySelector(".hljs-bullet, .hljs-section, .hljs-strong, .hljs-emphasis")) return;
+    const lineContainer = code.firstElementChild;
+    if (!lineContainer) return;
+    code.dataset.codexMarkdown = "true";
+
+    for (const line of lineContainer.children) {
+      if (!ARABIC_RE.test(line.textContent || "")) continue;
+      line.dir = "rtl";
+      line.dataset.codexMarkdownRtl = "true";
+    }
+  }
+
   function scan(root) {
     if (!root || root.nodeType !== Node.ELEMENT_NODE || isInteractive(root)) return;
     root.querySelectorAll?.(CODE_BLOCK_SELECTOR).forEach((el) => {
       el.dir = "ltr";
       el.dataset.codexCodeLtr = "true";
     });
+    if (root.matches && root.matches("code")) applyMarkdownCodeDirection(root);
+    root.querySelectorAll?.("code").forEach(applyMarkdownCodeDirection);
     if (root.matches && root.matches(BLOCK_SELECTOR)) applyDirection(root);
     root.querySelectorAll?.(BLOCK_SELECTOR).forEach(applyDirection);
     if (root.matches && root.matches(TEXT_LEAF_SELECTOR)) applyTextLeafDirection(root);
     root.querySelectorAll?.(TEXT_LEAF_SELECTOR).forEach(applyTextLeafDirection);
+    if (root.matches && root.matches("[data-codex-rtl='true']")) isolateLatinRuns(root);
+    root.querySelectorAll?.("[data-codex-rtl='true']").forEach(isolateLatinRuns);
   }
 
   function scheduleScan(root) {

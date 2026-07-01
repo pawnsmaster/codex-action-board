@@ -6,7 +6,7 @@
 [data-codex-rtl-root="true"] [dir="rtl"] {
   direction: rtl !important;
   text-align: var(--codex-rtl-text-align) !important;
-  unicode-bidi: plaintext !important;
+  unicode-bidi: isolate !important;
 }
 
 [data-codex-rtl-root="true"] [data-message-author-role="user" i] [data-codex-rtl="true"],
@@ -18,6 +18,11 @@
 
 [data-codex-rtl-root="true"] [data-codex-bidi="auto"] {
   unicode-bidi: plaintext !important;
+}
+
+[data-codex-rtl-root="true"] [data-codex-ltr-run="true"] {
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
 }
 
 [data-codex-rtl-root="true"] pre,
@@ -43,6 +48,23 @@
 [data-codex-rtl-root="true"] [class*="monaco" i] {
   direction: ltr !important;
   text-align: left !important;
+  unicode-bidi: isolate !important;
+}
+
+[data-codex-rtl-root="true"] :not(pre) > code {
+  display: inline-block;
+}
+
+[data-codex-rtl-root="true"] code[data-codex-markdown="true"] {
+  display: block !important;
+  width: 100% !important;
+}
+
+[data-codex-rtl-root="true"] code [data-codex-markdown-rtl="true"] {
+  display: block !important;
+  width: 100% !important;
+  direction: rtl !important;
+  text-align: right !important;
   unicode-bidi: isolate !important;
 }
 

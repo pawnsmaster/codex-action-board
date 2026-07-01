@@ -6,7 +6,7 @@ Fix mixed Arabic/English text in Codex Desktop while keeping code left-to-right.
 
 **Download, extract, and double-click `Run-CodexRTL.cmd`.**
 
-1. Download [`codex-rtl-toolkit-v0.1.2.zip`](https://github.com/pawnsmaster/codex-rtl-toolkit/releases/latest).
+1. Download [`codex-rtl-toolkit-v0.1.3.zip`](https://github.com/pawnsmaster/codex-rtl-toolkit/releases/latest).
 2. Extract the ZIP.
 3. Save any unfinished input in Codex.
 4. Double-click `Run-CodexRTL.cmd`.
@@ -19,6 +19,8 @@ Requirements: Windows, Node.js 20+, and Codex Desktop.
 
 - Arabic paragraphs align right.
 - Mixed Arabic and English render in the correct order.
+- English runs and sentence-ending punctuation keep their natural position inside RTL text.
+- Arabic Markdown inside fenced blocks aligns right without changing programming code direction.
 - Code blocks, terminals, file paths, and inline code remain LTR.
 - English-heavy messages keep their normal direction.
 
