@@ -28,5 +28,5 @@ Use this checklist before publishing a release.
 ## Release Notes
 
 - [ ] State clearly that the desktop mode opens a localhost-only DevTools port.
-- [ ] Tell users to close Codex Desktop before using the one-click launcher.
+- [ ] Tell users to save unfinished input because the one-click launcher closes running Codex processes.
 - [ ] Tell users not to run modified scripts from forks without reviewing the diff.

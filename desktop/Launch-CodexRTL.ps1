@@ -19,7 +19,7 @@ if (-not (Test-Path $exe)) {
 
 $running = Get-Process -Name Codex -ErrorAction SilentlyContinue
 if ($running) {
-  Write-Warning "Codex is already running. Close it first, then run this launcher again so the debugging port is enabled."
+  Write-Error "Codex is already running. Close it first, then run this launcher again so the debugging port is enabled."
 }
 
 Write-Host "Starting Codex with local DevTools port $port..."

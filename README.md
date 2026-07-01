@@ -1,60 +1,46 @@
 # Codex RTL Toolkit
 
-Fix Arabic/English mixed-direction text in Codex conversations without changing your messages or account data.
+Fix mixed Arabic/English text in Codex Desktop while keeping code left-to-right.
 
-This repo ships two install paths:
+## Quick Start
 
-- `desktop/`: injects RTL CSS into Codex Desktop through the local Chromium DevTools Protocol.
-- `extension/`: a Chrome/Edge extension for Codex or ChatGPT in a normal browser.
+**Download, extract, and double-click `Run-CodexRTL.cmd`.**
 
-## Status
+1. Download [`codex-rtl-toolkit-v0.1.2.zip`](https://github.com/pawnsmaster/codex-rtl-toolkit/releases/latest).
+2. Extract the ZIP.
+3. Save any unfinished input in Codex.
+4. Double-click `Run-CodexRTL.cmd`.
 
-This is a community workaround. It does not modify OpenAI accounts or messages. It only changes local rendering in your browser/app session.
+Codex may remain active after its window is closed. The launcher safely closes any running Codex processes, starts a fresh RTL-enabled session, and applies the fix automatically.
 
-Codex Desktop does not currently expose a documented plugin API for changing the app CSS. The desktop path therefore needs Codex to be launched with a local remote debugging port bound to `127.0.0.1`.
+Requirements: Windows, Node.js 20+, and Codex Desktop.
 
-## Current Release
+## What It Fixes
 
-Current version: `v0.1.1`.
+- Arabic paragraphs align right.
+- Mixed Arabic and English render in the correct order.
+- Code blocks, terminals, file paths, and inline code remain LTR.
+- English-heavy messages keep their normal direction.
 
-This release includes the RTL rendering fix, a safer first-run dependency install using `npm ci --ignore-scripts`, and published security review notes.
+## What the Launcher Does
 
-## Desktop Quick Start
+- closes running or background Codex processes
+- checks that Node.js and npm are installed
+- runs `npm ci --ignore-scripts` on the first launch
+- starts Codex with a DevTools port bound only to `127.0.0.1`
+- injects the local RTL rendering fix
 
-Requirements:
+It does not change your messages, account data, or Codex installation files.
 
-- Windows
-- Node.js 20+
-- Codex Desktop
+## Manual Start
 
-### One-Click Start
-
-1. Download this repo as a ZIP and extract it.
-2. Close Codex Desktop completely.
-3. Double-click:
-
-```text
-Run-CodexRTL.cmd
-```
-
-The launcher will:
-
-- check that Node.js/npm are installed
-- run `npm ci --ignore-scripts` the first time
-- start Codex Desktop with a localhost-only DevTools port
-- inject the RTL fix
-
-If Codex is already open, close it first and run `Run-CodexRTL.cmd` again.
-
-### Manual Start
-
-Install dependencies:
+For users who prefer not to run the CMD launcher, install dependencies from PowerShell:
 
 ```powershell
 npm ci --ignore-scripts
 ```
 
-Close Codex Desktop, then start it with a local debugging port:
+Close Codex Desktop completely, then start it with the local debugging port:
 
 ```powershell
 .\desktop\Launch-CodexRTL.ps1
@@ -66,9 +52,9 @@ In another terminal, inject the RTL fix:
 npm run inject
 ```
 
-If the script says it cannot find Codex, keep Codex open on a conversation and run `npm run inject` again.
+If the injector cannot find Codex, keep a conversation open and run `npm run inject` again.
 
-### Desktop Security Note
+## Security
 
 The launcher uses Chromium DevTools on localhost only:
 
@@ -78,6 +64,8 @@ The launcher uses Chromium DevTools on localhost only:
 
 Do not expose this port through a tunnel, proxy, firewall rule, or shared machine. The injector refuses non-local DevTools targets.
 
+This is a community workaround because Codex Desktop does not currently expose a documented plugin API for changing its CSS. Read [`SECURITY.md`](SECURITY.md) and [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) for the threat model and audit notes.
+
 ## Browser Extension
 
 1. Open `chrome://extensions`.
@@ -85,15 +73,7 @@ Do not expose this port through a tunnel, proxy, firewall rule, or shared machin
 3. Click Load unpacked.
 4. Select the `extension` folder.
 
-The extension injects the same RTL fix into `chatgpt.com`.
-
-## What It Fixes
-
-- Arabic paragraphs are aligned right.
-- Mixed Arabic and English uses `unicode-bidi: plaintext`.
-- Code blocks, terminals, file paths, and inline code remain LTR.
-- Arabic-heavy messages get `dir="rtl"` automatically.
-- English-heavy messages stay browser-default.
+The extension applies the same rendering fix to `chatgpt.com`. Codex Desktop is the toolkit's primary target.
 
 ## Limitations
 
@@ -120,12 +100,6 @@ Security review artifacts:
 - `SECURITY.md`: safe usage and reporting policy.
 - `SECURITY_AUDIT.md`: audit report for the current codebase.
 - `docs/security-checklist.md`: release checklist.
-
-## Suggested Repo Name
-
-```text
-codex-rtl-toolkit
-```
 
 ## Project Layout
 

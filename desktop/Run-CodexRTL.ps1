@@ -15,13 +15,15 @@ Set-Location $root
 
 Info "Codex RTL Toolkit"
 Write-Host ""
-Write-Host "Before continuing, close Codex Desktop completely." -ForegroundColor Yellow
-Write-Host "If Codex is already open, this launcher may not be able to enable the local injection port."
-Write-Host ""
-
 $running = Get-Process -Name Codex -ErrorAction SilentlyContinue
 if ($running) {
-  Fail "Codex is still running. Close Codex Desktop, then run Run-CodexRTL.cmd again."
+  Write-Host "Codex is running. Closing it before enabling the RTL fix..." -ForegroundColor Yellow
+  $running | Stop-Process -Force
+  Start-Sleep -Seconds 1
+
+  if (Get-Process -Name Codex -ErrorAction SilentlyContinue) {
+    Fail "Codex could not be closed. End its processes in Task Manager, then try again."
+  }
 }
 
 $node = Get-Command node -ErrorAction SilentlyContinue
