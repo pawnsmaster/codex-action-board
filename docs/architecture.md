@@ -6,6 +6,9 @@ Codex RTL Toolkit has one shared rendering fix and two delivery paths.
 
 - `src/injected.js`: classifies Arabic-heavy text blocks and applies `dir`.
 - `src/rtl-style.css`: CSS overrides for RTL text and LTR code blocks.
+- `src/action-board-core.js`: deterministic Markdown parsing and decision-prompt formatting.
+- `src/action-board.js`: response discovery, selection trigger, review panel, and composer bridge.
+- `src/action-board.css`: host-inheriting responsive UI styles.
 
 Run this after editing shared assets:
 

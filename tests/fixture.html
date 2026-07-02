@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="electron-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Action Board fixture</title>
+  <link rel="stylesheet" href="../src/rtl-style.css">
+  <link rel="stylesheet" href="../src/action-board.css">
+  <style>
+    body { margin: 0; font: 14px/1.5 system-ui, sans-serif; color: #242424; background: #fff; }
+    .app-shell { display: flex; width: 100%; min-height: 100vh; direction: ltr; }
+    .host-sidebar { flex: 0 0 180px; border-inline-end: 1px solid #ddd; }
+    main { flex: 1; min-width: 0; padding: 48px max(16px, calc((100% - 720px) / 2)) 160px; direction: rtl; }
+    .native-side-panel { position: relative; flex: 0 0 320px; min-height: 100vh; border-inline-start: 1px solid #ddd; background: #fff; }
+    .native-side-panel__menu { display: flex; flex-direction: column; gap: 4px; max-width: 280px; margin: 160px auto; }
+    .native-side-panel__menu button { min-height: 40px; text-align: left; }
+    article { padding-block: 24px; }
+    .actions { display: flex; gap: 4px; }
+    form { position: fixed; inset-inline: 50%; bottom: 20px; width: min(680px, calc(100% - 32px)); padding: 12px; transform: translateX(50%); background: #fff; border: 1px solid #ddd; border-radius: 12px; }
+    textarea { box-sizing: border-box; width: 100%; }
+  </style>
+</head>
+<body>
+  <div class="app-shell electron:fixture">
+  <aside class="host-sidebar" aria-label="Host sidebar"></aside>
+  <main>
+    <article data-message-author-role="assistant">
+      <p>أقترح تنفيذ التحسينات التالية:</p>
+      <ol>
+        <li>تحسين شاشة تسجيل الدخول مع الحفاظ على التصميم الحالي.
+          <ul>
+            <li>Open item card</li>
+            <li>Copy item number</li>
+          </ul>
+        </li>
+        <li>إضافة اختبارات لوحدة authentication.</li>
+        <li>تقليل حجم الحزمة النهائية.</li>
+      </ol>
+      <div class="actions"><button type="button" aria-label="Copy">نسخ</button></div>
+    </article>
+  </main>
+  <aside class="native-side-panel">
+    <div class="native-side-panel__menu">
+      <button type="button">Review <span>Ctrl+Shift+G</span></button>
+      <button type="button">Terminal</button>
+      <button type="button">Browser <span>Ctrl+T</span></button>
+      <button type="button">Files <span>Ctrl+P</span></button>
+      <button type="button">Side chat <span>Ctrl+Alt+S</span></button>
+    </div>
+  </aside>
+  </div>
+  <form><label>رسالتك<textarea rows="3"></textarea></label></form>
+  <script>
+    const fixtureList = document.querySelector("article ol");
+    for (let index = 4; index <= 25; index += 1) {
+      const item = document.createElement("li");
+      item.textContent = `اقتراح تجريبي رقم ${index} للتحقق من ثبات موضع التمرير.`;
+      fixtureList.append(item);
+    }
+  </script>
+  <script src="../src/action-board-core.js"></script>
+  <script src="../src/action-board.js"></script>
+</body>
+</html>

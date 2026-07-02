@@ -16,12 +16,21 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535) {
 
 const css = readFileSync(resolve(root, "src", "rtl-style.css"), "utf8");
 const injected = readFileSync(resolve(root, "src", "injected.js"), "utf8");
+const actionBoardCss = readFileSync(resolve(root, "src", "action-board.css"), "utf8");
+const actionBoardCore = readFileSync(resolve(root, "src", "action-board-core.js"), "utf8");
+const actionBoard = readFileSync(resolve(root, "src", "action-board.js"), "utf8");
 
 if (dryRun) {
-  if (!css.includes("unicode-bidi") || !injected.includes("MutationObserver")) {
-    throw new Error("RTL assets look incomplete.");
+  if (
+    !css.includes("unicode-bidi") ||
+    !injected.includes("MutationObserver") ||
+    !actionBoardCss.includes(".codex-action-board") ||
+    !actionBoardCore.includes("formatPrompt") ||
+    !actionBoard.includes("insertIntoComposer")
+  ) {
+    throw new Error("Shared toolkit assets look incomplete.");
   }
-  console.log("OK: RTL assets are present.");
+  console.log("OK: RTL and Action Board assets are present.");
   process.exit(0);
 }
 
@@ -106,14 +115,14 @@ if (candidates.length === 0) {
 
 const expression = `
 (() => {
-  window.__CODEX_RTL_STYLE__ = ${JSON.stringify(css)};
-  const source = ${JSON.stringify(injected)};
-  (0, eval)(source);
-  return Boolean(window.__CODEX_RTL_ACTIVE__);
+  window.__CODEX_RTL_STYLE__ = ${JSON.stringify(`${css}\n${actionBoardCss}`)};
+  const sources = ${JSON.stringify([injected, actionBoardCore, actionBoard])};
+  for (const source of sources) (0, eval)(source);
+  return Boolean(window.__CODEX_RTL_ACTIVE__ && window.__CODEX_ACTION_BOARD_ACTIVE__);
 })()
 `;
 
 for (const target of candidates) {
   await evaluate(target.webSocketDebuggerUrl, expression);
-  console.log(`Injected RTL fix into: ${target.title || target.url}`);
+  console.log(`Injected RTL and Action Board into: ${target.title || target.url}`);
 }

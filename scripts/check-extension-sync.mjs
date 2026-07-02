@@ -7,7 +7,11 @@ const root = resolve(here, "..");
 
 const pairs = [
   ["src/injected.js", "extension/injected.js"],
-  ["src/rtl-style.css", "extension/rtl-style.css"]
+  ["src/rtl-style.css", "extension/rtl-style.css"],
+  ["src/action-board-core.js", "extension/action-board-core.js"],
+  ["src/action-board.js", "extension/action-board.js"],
+  ["src/action-board.css", "extension/action-board.css"],
+  ["src/background.js", "extension/background.js"]
 ];
 
 for (const [source, copy] of pairs) {

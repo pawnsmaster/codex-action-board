@@ -3,6 +3,12 @@
   "name": "Codex RTL Toolkit",
   "version": "0.1.3",
   "description": "Improves Arabic/English RTL rendering in Codex and ChatGPT conversations.",
+  "permissions": [
+    "contextMenus"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": [
@@ -10,10 +16,13 @@
         "https://*.chatgpt.com/*"
       ],
       "css": [
-        "rtl-style.css"
+        "rtl-style.css",
+        "action-board.css"
       ],
       "js": [
-        "injected.js"
+        "injected.js",
+        "action-board-core.js",
+        "action-board.js"
       ],
       "run_at": "document_idle"
     }

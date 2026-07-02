@@ -1,6 +1,6 @@
-# Codex RTL Toolkit
+# Codex RTL Toolkit + Action Board
 
-Fix mixed Arabic/English text in Codex Desktop while keeping code left-to-right.
+Fix mixed Arabic/English text in Codex Desktop and turn assistant suggestions into a reviewable action checklist.
 
 ## Quick Start
 
@@ -23,6 +23,14 @@ Requirements: Windows, Node.js 20+, and Codex Desktop.
 - Arabic Markdown inside fenced blocks aligns right without changing programming code direction.
 - Code blocks, terminals, file paths, and inline code remain LTR.
 - English-heavy messages keep their normal direction.
+
+## Action Board
+
+- Use the checklist button beside an assistant response to open its suggestions.
+- Accept, reject, edit, annotate, and reorder individual actions.
+- Select part of a response to add only that text.
+- Preview one structured Arabic decision prompt.
+- Insert the prompt into the Codex composer for review; it is never sent automatically.
 
 ## What the Launcher Does
 
