@@ -6,9 +6,9 @@ Codex is great at producing plans, refactors, and long lists of suggested change
 
 Codex Action Board turns an assistant response into a local checklist inside Codex. You review each suggested action, decide what should happen, then insert one focused instruction back into the composer. Nothing is sent automatically.
 
-[![Codex Action Board demo](docs/assets/demo.gif)](https://github.com/pawnsmaster/codex-action-board/releases/download/v0.1.0/demo.gif)
+[![Codex Action Board demo](docs/assets/demo.gif)](docs/demo.md)
 
-Click the Arabic/RTL demo to open the full-quality GIF.
+Click the demo to open the full-quality view.
 
 ## Why this exists
 
@@ -47,9 +47,9 @@ You can also switch language from inside Action Board at any time.
 
 Action Board was built for mixed Arabic/English Codex conversations.
 
-[![Arabic and RTL support](docs/assets/arabic-rtl.gif)](https://github.com/pawnsmaster/codex-action-board/releases/download/v0.1.0/arabic-rtl.gif)
+[![Arabic and RTL support](docs/assets/arabic-rtl.gif)](docs/arabic-rtl-demo.md)
 
-Click the demo to open the full-quality GIF.
+Click the Arabic/RTL demo to open the full-quality view.
 
 In Arabic mode:
 
