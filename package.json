@@ -1,17 +1,19 @@
 {
-  "name": "codex-rtl-toolkit",
-  "version": "0.1.3",
-  "description": "Local RTL rendering fixes for Arabic/English Codex conversations.",
+  "name": "codex-action-board",
+  "version": "0.1.0",
+  "description": "Local Action Board for reviewing Codex suggestions with optional Arabic RTL support.",
   "type": "module",
   "scripts": {
     "build:extension": "node scripts/sync-extension.mjs",
-    "inject": "node desktop/inject.mjs",
-    "verify:live": "node desktop/verify.mjs",
+    "package:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-release-zip.ps1",
+    "inject": "node desktop/inject-action-board.mjs",
+    "verify:live": "node desktop/verify-action-board.mjs",
     "test": "node --test tests/*.test.mjs && node tests/action-board.e2e.mjs",
-    "check": "node --check desktop/inject.mjs && node --check desktop/verify.mjs && node --check src/injected.js && node --check src/action-board-core.js && node --check src/action-board.js && node --check src/background.js && node --check scripts/sync-extension.mjs && node --check scripts/check-extension-sync.mjs && node --check extension/injected.js && node --check extension/action-board-core.js && node --check extension/action-board.js && node --check extension/background.js && node scripts/check-extension-sync.mjs && node --test tests/*.test.mjs && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-powershell.ps1"
+    "check": "node --check desktop/inject-action-board.mjs && node --check desktop/verify-action-board.mjs && node --check src/codex-rtl-engine.js && node --check src/action-board-core.js && node --check src/action-board.js && node --check src/action-board-background.js && node --check scripts/sync-extension.mjs && node --check scripts/check-extension-sync.mjs && node --check extension/codex-rtl-engine.js && node --check extension/action-board-core.js && node --check extension/action-board.js && node --check extension/action-board-background.js && node scripts/check-extension-sync.mjs && node --test tests/*.test.mjs && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-powershell.ps1"
   },
   "keywords": [
     "codex",
+    "action-board",
     "rtl",
     "arabic",
     "bidi",

@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Codex RTL Toolkit",
-  "version": "0.1.3",
-  "description": "Improves Arabic/English RTL rendering in Codex and ChatGPT conversations.",
+  "name": "Codex Action Board",
+  "version": "0.1.0",
+  "description": "Review Codex suggestions in an Action Board with optional Arabic RTL support.",
   "permissions": [
-    "contextMenus"
+    "contextMenus",
+    "storage"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "action-board-background.js"
   },
   "content_scripts": [
     {
@@ -20,7 +21,7 @@
         "action-board.css"
       ],
       "js": [
-        "injected.js",
+        "codex-rtl-engine.js",
         "action-board-core.js",
         "action-board.js"
       ],

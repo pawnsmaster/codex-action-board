@@ -24,6 +24,14 @@
   <div class="app-shell electron:fixture">
   <aside class="host-sidebar" aria-label="Host sidebar"></aside>
   <main>
+    <article data-message-author-role="user">
+      <p>نفذ كل الاقتراحات ما عدا آخر نقطة.</p>
+      <div class="actions">
+        <span class="copy-tooltip-trigger"><button type="button" aria-label="Copy" title="Copy">نسخ</button></span>
+        <button type="button" aria-label="Good response">جيد</button>
+        <button type="button" aria-label="Bad response">سيئ</button>
+      </div>
+    </article>
     <article data-message-author-role="assistant">
       <p>أقترح تنفيذ التحسينات التالية:</p>
       <ol>
@@ -36,7 +44,17 @@
         <li>إضافة اختبارات لوحدة authentication.</li>
         <li>تقليل حجم الحزمة النهائية.</li>
       </ol>
-      <div class="actions"><button type="button" aria-label="Copy">نسخ</button></div>
+      <div class="actions">
+        <span class="copy-tooltip-trigger"><button type="button" aria-label="Copy" title="Copy">نسخ</button></span>
+        <button type="button" aria-label="Good response">جيد</button>
+        <button type="button" aria-label="Bad response">سيئ</button>
+      </div>
+    </article>
+    <article>
+      <p>هذه ملاحظة عامة داخل الصفحة وليست رد assistant.</p>
+      <div class="actions">
+        <span class="copy-tooltip-trigger"><button type="button" aria-label="Copy" title="Copy">نسخ</button></span>
+      </div>
     </article>
   </main>
   <aside class="native-side-panel">
@@ -58,6 +76,7 @@
       fixtureList.append(item);
     }
   </script>
+  <script src="../src/codex-rtl-engine.js"></script>
   <script src="../src/action-board-core.js"></script>
   <script src="../src/action-board.js"></script>
 </body>

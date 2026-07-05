@@ -4,6 +4,8 @@
   if (window.__CODEX_ACTION_BOARD_ACTIVE__) {
     window.__CODEX_ACTION_BOARD_OBSERVER__?.disconnect();
     window.__CODEX_ACTION_BOARD_EVENTS__?.abort();
+    clearInterval(window.__CODEX_ACTION_BOARD_SCAN_INTERVAL__);
+    delete window.__CODEX_ACTION_BOARD_SCAN_INTERVAL__;
     delete window.__CODEX_ACTION_BOARD_OPEN_CONTEXT__;
     document.querySelectorAll(
       ".codex-action-board, .codex-action-trigger, .codex-action-composer-trigger, .codex-action-side-panel-entry, .codex-action-sr-only, .codex-action-selection-trigger, .codex-action-context-menu, .codex-action-native-menu-item"
@@ -13,11 +15,54 @@
   const core = window.__CODEX_ACTION_BOARD_CORE__;
   if (!core) throw new Error("Action Board core was not loaded.");
 
+  const LANGUAGE_KEY = "codex-action-board-language";
+  const COPY = {
+    ar: {
+      title: "لوحة الإجراءات", open: "فتح لوحة الإجراءات", openSelection: "فتح التحديد في لوحة الإجراءات",
+      openResponse: "فتح في لوحة الإجراءات", close: "إغلاق اللوحة", acceptAll: "قبول الكل", reset: "إعادة التعيين",
+      resetAria: "إعادة تعيين الحالات", accept: "قبول", reject: "رفض", later: "لاحقًا", statusAria: "حالة العنصر",
+      moveUp: "تحريك لأعلى", moveDown: "تحريك لأسفل", actionText: "نص الإجراء",
+      note: "ملاحظة أو توجيه (اختياري)", notePlaceholder: "مثال: حافظ على التصميم الحالي",
+      accepted: "مقبول", rejected: "مرفوض", undecided: "غير محسوم", preview: "معاينة الرسالة",
+      insert: "إدراج في مربع الكتابة", insertAria: "إدراج في مربع كتابة Codex",
+      group: "ضم النقاط الفرعية داخل قرار واحد", split: "تفصيل النقاط الفرعية كقرارات منفصلة",
+      empty: "لم نجد قائمة قابلة للتحويل في هذا الرد. حدّد نصًا وأضفه إلى اللوحة.", switchLanguage: "Switch to English",
+      switched: "تم تغيير لغة الأداة إلى العربية وتفعيل RTL.", composerMissing: "تعذّر العثور على مربع كتابة Codex.",
+      composerMissingHelp: "تعذّر العثور على مربع الكتابة. اترك المحادثة مفتوحة وحاول مجددًا.",
+      inserted: "تم إدراج القرارات في مربع الكتابة دون إرسالها.",
+      splitDone: "تم تفصيل النقاط الفرعية كقرارات منفصلة.", groupedDone: "تم ضم النقاط الفرعية داخل قرار واحد.",
+      opened: (count) => `فُتحت لوحة الإجراءات وبها ${count} عناصر.`
+    },
+    en: {
+      title: "Action Board", open: "Open Action Board", openSelection: "Open selection in Action Board",
+      openResponse: "Open in Action Board", close: "Close Action Board", acceptAll: "Accept all", reset: "Reset",
+      resetAria: "Reset all decisions", accept: "Accept", reject: "Reject", later: "Later", statusAria: "Item status",
+      moveUp: "Move up", moveDown: "Move down", actionText: "Action text",
+      note: "Note or guidance (optional)", notePlaceholder: "Example: Keep the current design",
+      accepted: "accepted", rejected: "rejected", undecided: "undecided", preview: "Message preview",
+      insert: "Insert into composer", insertAria: "Insert into the Codex composer",
+      group: "Group sub-items into one decision", split: "Split sub-items into separate decisions",
+      empty: "No actionable list was found in this response. Select text and add it to the board.", switchLanguage: "التبديل إلى العربية",
+      switched: "Action Board switched to English. Codex RTL has been disabled.", composerMissing: "The Codex composer could not be found.",
+      composerMissingHelp: "The composer could not be found. Keep the conversation open and try again.",
+      inserted: "The decisions were inserted into the composer without being sent.",
+      splitDone: "Sub-items are now separate decisions.", groupedDone: "Sub-items are now grouped into one decision.",
+      opened: (count) => `Action Board opened with ${count} items.`
+    }
+  };
+
+  function loadLanguage() {
+    try {
+      const stored = localStorage.getItem(LANGUAGE_KEY);
+      if (stored === "ar" || stored === "en") return stored;
+    } catch {}
+    return window.__CODEX_ACTION_BOARD_LANGUAGE__ === "ar" ? "ar" : "en";
+  }
+
   const RESPONSE_SELECTOR = [
     "[data-codex-assistant-response='true']",
     "[data-message-author-role='assistant' i]",
-    "article[data-testid*='assistant' i]",
-    "article"
+    "article[data-testid*='assistant' i]"
   ].join(",");
   const state = {
     sourceText: "",
@@ -25,7 +70,8 @@
     sourceElement: null,
     sourceContext: null,
     returnFocus: null,
-    subitemMode: "split",
+    language: loadLanguage(),
+    subitemMode: "grouped",
     pendingListScrollTop: undefined
   };
   let panel;
@@ -37,10 +83,13 @@
   window.__CODEX_ACTION_BOARD_EVENTS__ = eventController;
   const ACTION_BOARD_ICON_PATHS = '<path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.4 1.4L7.5 4.8M3.5 12l1.4 1.4 2.6-2.6M3.5 18l1.4 1.4 2.6-2.6"/>';
 
-  function forceRtl(element) {
-    element.dir = "rtl";
-    element.style.setProperty("direction", "rtl", "important");
-    element.style.setProperty("text-align", "right", "important");
+  function copy(key) { return COPY[state.language][key]; }
+
+  function applyUiDirection(element, align) {
+    const rtl = state.language === "ar";
+    element.dir = rtl ? "rtl" : "ltr";
+    element.style.setProperty("direction", rtl ? "rtl" : "ltr", "important");
+    element.style.setProperty("text-align", align || (rtl ? "right" : "left"), "important");
     return element;
   }
 
@@ -103,6 +152,10 @@
     if (!el || el.closest("[data-codex-action-board]")) return false;
     if (el.matches("[data-message-author-role='user' i]")) return false;
     if (el.querySelector("[data-message-author-role='user' i]")) return false;
+    const explicitlyAssistant = el.dataset.codexAssistantResponse === "true"
+      || el.matches("[data-message-author-role='assistant' i]")
+      || el.matches("article[data-testid*='assistant' i]");
+    if (!explicitlyAssistant) return false;
     return Boolean((el.innerText || "").trim()) && Boolean(el.querySelector("p, li, pre, h1, h2, h3, h4"));
   }
 
@@ -198,15 +251,6 @@
     return copyButton?.parentElement || null;
   }
 
-  function clearSiblingActionHover(trigger) {
-    trigger.parentElement?.querySelectorAll("button").forEach((button) => {
-      if (button === trigger) return;
-      button.blur();
-      button.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
-      button.dispatchEvent(new PointerEvent("pointerleave", { bubbles: true }));
-    });
-  }
-
   function openSelectedText() {
     const selected = selectedAssistantText();
     if (!selected) return;
@@ -237,7 +281,8 @@
     const viewportPadding = 8;
     const minLeft = Math.max(viewportPadding, Math.min(window.innerWidth - size - viewportPadding, responseRect.left + 12));
     const maxLeft = Math.max(minLeft, Math.min(window.innerWidth - size - viewportPadding, responseRect.right - size - 12));
-    const left = clamp(rect.left - size - gap, minLeft, maxLeft);
+    const preferredLeft = state.language === "ar" ? rect.left - size - gap : rect.right + gap;
+    const left = clamp(preferredLeft, minLeft, maxLeft);
     const top = clamp(
       rect.top + Math.min(24, Math.max(0, rect.height / 2)) - size / 2,
       viewportPadding,
@@ -253,20 +298,24 @@
   }
 
   function decorateResponse(el) {
-    if (!isAssistantResponse(el) || el.dataset.codexActionReady) return;
+    if (!isAssistantResponse(el)) return;
+    if (el.dataset.codexActionReady) {
+      const existingTrigger = el.querySelector(".codex-action-trigger");
+      if (existingTrigger?.isConnected) return;
+      delete el.dataset.codexActionReady;
+    }
     el.dataset.codexActionReady = "true";
     const trigger = button(
-      "فتح في لوحة الإجراءات",
+      copy("openResponse"),
       "codex-action-trigger",
       () => openBoard(el),
       ACTION_BOARD_ICON_PATHS
     );
-    trigger.addEventListener("mouseenter", () => clearSiblingActionHover(trigger));
-    trigger.addEventListener("focus", () => clearSiblingActionHover(trigger));
-    const row = findActionRow(el);
-    if (row) {
+    trigger.removeAttribute("title");
+    const actionRow = findActionRow(el);
+    if (actionRow) {
       trigger.classList.add("codex-action-trigger--native");
-      row.append(trigger);
+      actionRow.append(trigger);
     } else {
       trigger.classList.add("codex-action-trigger--fallback");
       el.append(trigger);
@@ -357,7 +406,7 @@
     document.documentElement.dataset.codexActionBoardOpen = "true";
     ensureComposerTrigger();
     panel.querySelector(".codex-action-board__close")?.focus();
-    announce(`فُتحت لوحة الإجراءات وبها ${state.items.length} عناصر.`);
+    announce(copy("opened")(state.items.length));
   }
 
   function reparseCurrentSource() {
@@ -377,9 +426,44 @@
     state.subitemMode = state.subitemMode === "split" ? "grouped" : "split";
     reparseCurrentSource();
     renderPanel();
-    announce(state.subitemMode === "split"
-      ? "تم تفصيل النقاط الفرعية كقرارات منفصلة."
-      : "تم ضم النقاط الفرعية داخل قرار واحد.");
+    announce(state.subitemMode === "split" ? copy("splitDone") : copy("groupedDone"));
+  }
+
+  function toggleLanguage() {
+    const list = panel.querySelector(".codex-action-board__list");
+    const scrollTop = list?.scrollTop || 0;
+    state.language = state.language === "ar" ? "en" : "ar";
+    window.__CODEX_ACTION_BOARD_LANGUAGE__ = state.language;
+    try { localStorage.setItem(LANGUAGE_KEY, state.language); } catch {}
+    globalThis.chrome?.runtime?.sendMessage?.({ type: "codex-action-board:set-language", language: state.language }, () => {
+      void globalThis.chrome?.runtime?.lastError;
+    });
+    if (state.language === "ar") window.__CODEX_RTL_ENABLE__?.();
+    else window.__CODEX_RTL_DISABLE__?.();
+    renderPanel({ scrollTop });
+    refreshLocalizedTriggers();
+    announce(copy("switched"));
+  }
+
+  function refreshLocalizedTriggers() {
+    document.querySelectorAll(".codex-action-trigger").forEach((trigger) => {
+      trigger.setAttribute("aria-label", copy("openResponse"));
+      trigger.removeAttribute("title");
+    });
+    if (selectionTrigger) {
+      selectionTrigger.title = copy("openSelection");
+      selectionTrigger.setAttribute("aria-label", copy("openSelection"));
+    }
+    const composerTrigger = document.querySelector(".codex-action-composer-trigger");
+    if (composerTrigger) {
+      composerTrigger.title = copy("open");
+      composerTrigger.setAttribute("aria-label", copy("open"));
+    }
+    if (sidePanelEntry) {
+      sidePanelEntry.title = copy("open");
+      sidePanelEntry.setAttribute("aria-label", copy("open"));
+      replaceFirstText(sidePanelEntry, copy("title"));
+    }
   }
 
   function closeBoard() {
@@ -453,36 +537,36 @@
 
   function renderItem(item, index) {
     const row = document.createElement("li");
-    forceRtl(row);
+    applyUiDirection(row);
     row.className = "codex-action-item";
     row.dataset.itemId = item.id;
     row.dataset.status = item.status;
 
     const top = document.createElement("div");
-    forceRtl(top);
+    applyUiDirection(top);
     top.className = "codex-action-item__top";
     const number = document.createElement("span");
     number.className = "codex-action-item__number";
     number.textContent = String(index + 1);
     number.setAttribute("aria-hidden", "true");
     const statuses = document.createElement("div");
-    forceRtl(statuses);
+    applyUiDirection(statuses);
     statuses.className = "codex-action-item__statuses";
-    statuses.setAttribute("aria-label", "حالة العنصر");
-    statuses.append(statusButton(item, "accepted", "قبول"), statusButton(item, "rejected", "رفض"), statusButton(item, "undecided", "لاحقًا"));
+    statuses.setAttribute("aria-label", copy("statusAria"));
+    statuses.append(statusButton(item, "accepted", copy("accept")), statusButton(item, "rejected", copy("reject")), statusButton(item, "undecided", copy("later")));
     const moves = document.createElement("div");
     moves.className = "codex-action-item__moves";
-    const up = button("تحريك لأعلى", "codex-action-item__move", () => moveItem(item.id, -1), '<path d="m6 15 6-6 6 6"/>');
+    const up = button(copy("moveUp"), "codex-action-item__move", () => moveItem(item.id, -1), '<path d="m6 15 6-6 6 6"/>');
     up.disabled = index === 0;
-    const down = button("تحريك لأسفل", "codex-action-item__move", () => moveItem(item.id, 1), '<path d="m6 9 6 6 6-6"/>');
+    const down = button(copy("moveDown"), "codex-action-item__move", () => moveItem(item.id, 1), '<path d="m6 9 6 6 6-6"/>');
     down.disabled = index === state.items.length - 1;
     moves.append(up, down);
     top.append(number, statuses, moves);
 
     const label = document.createElement("label");
-    forceRtl(label);
+    applyUiDirection(label);
     label.className = "codex-action-item__label";
-    label.textContent = "نص الإجراء";
+    label.textContent = copy("actionText");
     const text = document.createElement("textarea");
     text.className = "codex-action-item__text";
     text.value = item.editedText;
@@ -495,13 +579,13 @@
     label.append(text);
 
     const noteLabel = document.createElement("label");
-    forceRtl(noteLabel);
+    applyUiDirection(noteLabel);
     noteLabel.className = "codex-action-item__note-label";
-    noteLabel.textContent = "ملاحظة أو توجيه (اختياري)";
+    noteLabel.textContent = copy("note");
     const note = document.createElement("textarea");
     note.rows = 1;
     note.value = item.note;
-    note.placeholder = "مثال: حافظ على التصميم الحالي";
+    note.placeholder = copy("notePlaceholder");
     note.addEventListener("input", () => { item.note = note.value; updateSummary(); });
     noteLabel.append(note);
 
@@ -521,9 +605,9 @@
     if (!summary) return;
     const count = counts();
     const statuses = [
-      [count.accepted, "مقبول"],
-      [count.rejected, "مرفوض"],
-      [count.undecided, "غير محسوم"]
+      [count.accepted, copy("accepted")],
+      [count.rejected, copy("rejected")],
+      [count.undecided, copy("undecided")]
     ];
     summary.replaceChildren();
     statuses.forEach(([value, label], index) => {
@@ -541,25 +625,25 @@
       number.dir = "ltr";
       number.textContent = String(value);
       const text = document.createElement("span");
-      text.dir = "rtl";
+      text.dir = state.language === "ar" ? "rtl" : "ltr";
       text.textContent = label;
       stat.append(number, document.createTextNode(" "), text);
       summary.append(stat);
     });
-    summary.setAttribute("aria-label", `${count.accepted} مقبول، ${count.rejected} مرفوض، ${count.undecided} غير محسوم`);
+    summary.setAttribute("aria-label", `${count.accepted} ${copy("accepted")}, ${count.rejected} ${copy("rejected")}, ${count.undecided} ${copy("undecided")}`);
     panel.querySelector(".codex-action-board__insert").disabled = count.accepted === 0;
     const preview = panel.querySelector(".codex-action-board__preview pre");
-    if (preview) preview.textContent = core.formatPrompt(state.items);
+    if (preview) preview.textContent = core.formatPrompt(state.items, state.language);
   }
 
   function insertIntoComposer() {
-    const prompt = core.formatPrompt(state.items);
+    const prompt = core.formatPrompt(state.items, state.language);
     const composer = Array.from(document.querySelectorAll("textarea, [contenteditable='true'], [role='textbox']"))
       .find((el) => !el.closest("[data-codex-action-board]") && el.getClientRects().length);
     if (!composer) {
-      announce("تعذّر العثور على مربع كتابة Codex.");
+      announce(copy("composerMissing"));
       panel.dataset.error = "composer";
-      renderError("تعذّر العثور على مربع الكتابة. اترك المحادثة مفتوحة وحاول مجددًا.");
+      renderError(copy("composerMissingHelp"));
       return;
     }
     composer.focus();
@@ -571,7 +655,7 @@
     }
     composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
     composer.dispatchEvent(new Event("change", { bubbles: true }));
-    announce("تم إدراج القرارات في مربع الكتابة دون إرسالها.");
+    announce(copy("inserted"));
     closeBoard();
   }
 
@@ -588,35 +672,38 @@
 
   function renderPanel({ scrollTop = 0, focusItemId } = {}) {
     panel.replaceChildren();
-    forceRtl(panel);
+    applyUiDirection(panel);
+    panel.dataset.language = state.language;
     const header = document.createElement("header");
     header.className = "codex-action-board__header";
     const headingWrap = document.createElement("div");
-    forceRtl(headingWrap);
+    applyUiDirection(headingWrap);
     const heading = document.createElement("h2");
-    forceRtl(heading);
+    applyUiDirection(heading);
     heading.id = "codex-action-board-title";
-    heading.textContent = "لوحة الإجراءات";
+    heading.textContent = copy("title");
     const summary = document.createElement("p");
-    forceRtl(summary);
+    applyUiDirection(summary);
     summary.className = "codex-action-board__summary";
     headingWrap.append(heading, summary);
-    const close = button("إغلاق اللوحة", "codex-action-board__close", closeBoard, '<path d="m6 6 12 12M18 6 6 18"/>');
+    const close = button(copy("close"), "codex-action-board__close", closeBoard, '<path d="m6 6 12 12M18 6 6 18"/>');
     header.append(headingWrap, close);
 
     const bulk = document.createElement("div");
-    forceRtl(bulk);
+    applyUiDirection(bulk);
     bulk.className = "codex-action-board__bulk";
-    const acceptAll = button("قبول الكل", "codex-action-board__bulk-button", () => {
+    const acceptAll = button(copy("acceptAll"), "codex-action-board__bulk-button", () => {
       setAllStatuses("accepted");
     });
-    acceptAll.textContent = "قبول الكل";
-    const clear = button("إعادة تعيين الحالات", "codex-action-board__bulk-button", () => {
+    acceptAll.textContent = copy("acceptAll");
+    const clear = button(copy("resetAria"), "codex-action-board__bulk-button", () => {
       setAllStatuses("undecided");
     });
-    clear.textContent = "إعادة التعيين";
+    clear.textContent = copy("reset");
+    const language = button(copy("switchLanguage"), "codex-action-board__language", toggleLanguage);
+    language.textContent = state.language === "ar" ? "EN" : "عربي";
     const subitemToggle = button(
-      state.subitemMode === "split" ? "ضم النقاط الفرعية داخل قرار واحد" : "تفصيل النقاط الفرعية كقرارات منفصلة",
+      state.subitemMode === "split" ? copy("group") : copy("split"),
       "codex-action-board__mode-toggle",
       toggleSubitemMode,
       state.subitemMode === "split"
@@ -625,37 +712,36 @@
     );
     subitemToggle.setAttribute("aria-pressed", String(state.subitemMode === "grouped"));
     subitemToggle.dataset.mode = state.subitemMode;
-    bulk.append(acceptAll, clear, subitemToggle);
+    bulk.append(acceptAll, clear, language, subitemToggle);
 
     const list = document.createElement("ol");
-    forceRtl(list);
+    applyUiDirection(list);
     list.className = "codex-action-board__list";
     if (state.items.length) state.items.forEach((item, index) => list.append(renderItem(item, index)));
     else {
       const empty = document.createElement("li");
       empty.className = "codex-action-board__empty";
-      empty.textContent = "لم نجد قائمة قابلة للتحويل في هذا الرد. حدّد نصًا وأضفه إلى اللوحة.";
+      empty.textContent = copy("empty");
       list.append(empty);
     }
 
     const preview = document.createElement("details");
-    forceRtl(preview);
+    applyUiDirection(preview);
     preview.className = "codex-action-board__preview";
     const previewSummary = document.createElement("summary");
-    forceRtl(previewSummary);
-    previewSummary.textContent = "معاينة الرسالة";
+    applyUiDirection(previewSummary);
+    previewSummary.textContent = copy("preview");
     const output = document.createElement("pre");
-    forceRtl(output);
-    output.textContent = core.formatPrompt(state.items);
+    applyUiDirection(output);
+    output.textContent = core.formatPrompt(state.items, state.language);
     preview.append(previewSummary, output);
 
     const footer = document.createElement("footer");
-    forceRtl(footer);
+    applyUiDirection(footer);
     footer.className = "codex-action-board__footer";
-    const insert = button("إدراج في مربع كتابة Codex", "codex-action-board__insert", insertIntoComposer);
-    forceRtl(insert);
-    insert.style.setProperty("text-align", "center", "important");
-    insert.textContent = "إدراج في مربع الكتابة";
+    const insert = button(copy("insertAria"), "codex-action-board__insert", insertIntoComposer);
+    applyUiDirection(insert, "center");
+    insert.textContent = copy("insert");
     footer.append(insert);
     panel.append(header, bulk, list, preview, footer);
     updateSummary();
@@ -672,7 +758,7 @@
     }
     const composer = Array.from(document.querySelectorAll("form")).find((el) => el.querySelector("textarea, [contenteditable='true'], [role='textbox']"));
     if (!composer) return;
-    const trigger = button("فتح لوحة الإجراءات", "codex-action-composer-trigger", () => openBoard(null), ACTION_BOARD_ICON_PATHS);
+    const trigger = button(copy("open"), "codex-action-composer-trigger", () => openBoard(null), ACTION_BOARD_ICON_PATHS);
     trigger.dataset.count = String(state.items.length);
     composer.append(trigger);
   }
@@ -710,11 +796,11 @@
     sidePanelEntry.removeAttribute("id");
     sidePanelEntry.className = template?.className || "codex-action-side-panel-entry";
     sidePanelEntry.classList.add("codex-action-side-panel-entry");
-    sidePanelEntry.title = "فتح لوحة الإجراءات";
-    sidePanelEntry.setAttribute("aria-label", "فتح لوحة الإجراءات");
+    sidePanelEntry.title = copy("open");
+    sidePanelEntry.setAttribute("aria-label", copy("open"));
     replaceShortcutText(sidePanelEntry, "Ctrl+Alt+L");
     replaceSidePanelIcon(sidePanelEntry);
-    replaceFirstText(sidePanelEntry, "لوحة الإجراءات");
+    replaceFirstText(sidePanelEntry, copy("title"));
     sidePanelEntry.addEventListener("click", () => openBoard(null));
     list.append(sidePanelEntry);
   }
@@ -856,10 +942,19 @@
 
   function visibleSelectionRect(range) {
     const bounding = range.getBoundingClientRect();
-    if (bounding.width > 0 && bounding.height > 0) return bounding;
     const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
     if (!rects.length) return bounding;
-    return rects.reduce((best, rect) => (rect.right > best.right ? rect : best), rects[0]);
+    const firstLine = rects.reduce((best, rect) => (
+      rect.top < best.top || (Math.abs(rect.top - best.top) <= 1 && rect.left < best.left) ? rect : best
+    ), rects[0]);
+    return {
+      left: Math.min(...rects.map((rect) => rect.left)),
+      right: Math.max(...rects.map((rect) => rect.right)),
+      top: firstLine.top,
+      bottom: firstLine.bottom,
+      width: Math.max(...rects.map((rect) => rect.right)) - Math.min(...rects.map((rect) => rect.left)),
+      height: firstLine.height
+    };
   }
 
   function clamp(value, min, max) {
@@ -909,6 +1004,9 @@
   }
 
   function setup() {
+    window.__CODEX_ACTION_BOARD_LANGUAGE__ = state.language;
+    if (state.language === "ar") window.__CODEX_RTL_ENABLE__?.();
+    else window.__CODEX_RTL_DISABLE__?.();
     const surfaces = [document.querySelector("main"), document.body, document.documentElement].filter(Boolean);
     const background = surfaces.map((element) => getComputedStyle(element).backgroundColor)
       .find((color) => color && color !== "transparent" && !/rgba\([^)]*,\s*0\s*\)$/.test(color));
@@ -928,7 +1026,7 @@
     liveRegion.setAttribute("aria-live", "polite");
 
     selectionTrigger = button(
-      "فتح التحديد في لوحة الإجراءات",
+      copy("openSelection"),
       "codex-action-selection-trigger",
       openSelectedText,
       ACTION_BOARD_ICON_PATHS
@@ -963,6 +1061,10 @@
       hideSelectionTrigger();
     }, { signal: eventController.signal });
     document.addEventListener("scroll", hideSelectionTrigger, { capture: true, signal: eventController.signal });
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) scanResponses();
+    }, { signal: eventController.signal });
+    window.addEventListener("focus", () => scanResponses(), { signal: eventController.signal });
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) mutation.addedNodes.forEach((node) => {
@@ -971,6 +1073,9 @@
     });
     observer.observe(document.body, { childList: true, subtree: true });
     window.__CODEX_ACTION_BOARD_OBSERVER__ = observer;
+    window.__CODEX_ACTION_BOARD_SCAN_INTERVAL__ = setInterval(() => {
+      if (!document.hidden) scanResponses();
+    }, 1500);
     window.__CODEX_ACTION_BOARD_ACTIVE__ = true;
   }
 

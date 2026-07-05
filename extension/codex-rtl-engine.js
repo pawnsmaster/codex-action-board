@@ -1,8 +1,8 @@
-(function codexRtlToolkit() {
-  const STYLE_ID = "codex-rtl-toolkit-style";
+(function codexRtlEngine() {
+  const STYLE_ID = "codex-action-board-style";
   const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
   const LATIN_RE = /[A-Za-z]/;
-  const processed = new WeakMap();
+  let processed = new WeakMap();
   const pending = new Set();
   let scheduled = false;
   const BLOCK_SELECTOR = [
@@ -57,7 +57,64 @@
       document.documentElement.appendChild(style);
     }
     style.textContent = window.__CODEX_RTL_STYLE__ || "";
-    document.documentElement.dataset.codexRtlRoot = "true";
+  }
+
+  function cleanupRtl() {
+    window.__CODEX_RTL_OBSERVER__?.disconnect();
+    delete window.__CODEX_RTL_OBSERVER__;
+    pending.clear();
+    scheduled = false;
+    if (!window.__CODEX_RTL_ACTIVE__ && !document.documentElement.dataset.codexRtlRoot) {
+      window.__CODEX_RTL_ACTIVE__ = false;
+      return;
+    }
+
+    const normalize = new Set();
+    document.querySelectorAll("[data-codex-ltr-run]").forEach((run) => {
+      if (run.parentNode) normalize.add(run.parentNode);
+      run.replaceWith(document.createTextNode(run.textContent || ""));
+    });
+    normalize.forEach((parent) => parent.normalize());
+
+    document.querySelectorAll("[data-codex-markdown-rtl]").forEach((element) => {
+      restoreDir(element);
+      delete element.dataset.codexMarkdownRtl;
+    });
+    document.querySelectorAll("[data-codex-code-ltr]").forEach((element) => {
+      restoreDir(element);
+      delete element.dataset.codexCodeLtr;
+    });
+    document.querySelectorAll("[data-codex-rtl]").forEach((element) => {
+      restoreDir(element);
+      delete element.dataset.codexRtl;
+    });
+    document.querySelectorAll("[data-codex-bidi]").forEach((element) => {
+      restoreDir(element);
+      delete element.dataset.codexBidi;
+    });
+    document.querySelectorAll("[data-codex-markdown]").forEach((element) => delete element.dataset.codexMarkdown);
+    delete document.documentElement.dataset.codexRtlRoot;
+    processed = new WeakMap();
+    window.__CODEX_RTL_ACTIVE__ = false;
+  }
+
+  function rememberDir(el) {
+    if (!el || Object.hasOwn(el.dataset, "codexPrevDir")) return;
+    el.dataset.codexPrevDir = el.hasAttribute("dir") ? el.getAttribute("dir") : "";
+  }
+
+  function restoreDir(el) {
+    if (!el) return;
+    if (Object.hasOwn(el.dataset, "codexPrevDir")) {
+      const previous = el.dataset.codexPrevDir;
+      if (previous) el.setAttribute("dir", previous);
+      else el.removeAttribute("dir");
+      delete el.dataset.codexPrevDir;
+      return;
+    }
+    if (el.matches("[data-codex-rtl], [data-codex-markdown-rtl]") && el.getAttribute("dir") === "rtl") el.removeAttribute("dir");
+    if (el.matches("[data-codex-bidi]") && el.getAttribute("dir") === "auto") el.removeAttribute("dir");
+    if (el.matches("[data-codex-code-ltr]") && el.getAttribute("dir") === "ltr") el.removeAttribute("dir");
   }
 
   function isCodeLike(node) {
@@ -87,11 +144,15 @@
 
     const direction = classifyText(text);
     if (direction === "rtl") {
+      rememberDir(el);
       el.dataset.codexRtl = "true";
       el.dir = "rtl";
     } else if (ARABIC_RE.test(text) && LATIN_RE.test(text)) {
       el.dataset.codexBidi = "auto";
-      if (!el.getAttribute("dir")) el.dir = "auto";
+      if (!el.getAttribute("dir")) {
+        rememberDir(el);
+        el.dir = "auto";
+      }
     }
   }
 
@@ -154,6 +215,7 @@
 
     for (const line of lineContainer.children) {
       if (!ARABIC_RE.test(line.textContent || "")) continue;
+      rememberDir(line);
       line.dir = "rtl";
       line.dataset.codexMarkdownRtl = "true";
     }
@@ -162,6 +224,7 @@
   function scan(root) {
     if (!root || root.nodeType !== Node.ELEMENT_NODE || isInteractive(root)) return;
     root.querySelectorAll?.(CODE_BLOCK_SELECTOR).forEach((el) => {
+      rememberDir(el);
       el.dir = "ltr";
       el.dataset.codexCodeLtr = "true";
     });
@@ -188,23 +251,26 @@
     });
   }
 
-  ensureStyle();
-  scan(document.body);
-
-  if (window.__CODEX_RTL_OBSERVER__) {
-    window.__CODEX_RTL_OBSERVER__.disconnect();
+  function enableRtl() {
+    ensureStyle();
+    document.documentElement.dataset.codexRtlRoot = "true";
+    scan(document.body);
+    window.__CODEX_RTL_OBSERVER__?.disconnect();
+    window.__CODEX_RTL_OBSERVER__ = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) scheduleScan(node);
+      }
+    });
+    window.__CODEX_RTL_OBSERVER__.observe(document.body, { childList: true, subtree: true });
+    window.__CODEX_RTL_ACTIVE__ = true;
   }
 
-  window.__CODEX_RTL_OBSERVER__ = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) scheduleScan(node);
-    }
-  });
+  window.__CODEX_RTL_ENABLE__ = enableRtl;
+  window.__CODEX_RTL_DISABLE__ = cleanupRtl;
 
-  window.__CODEX_RTL_OBSERVER__.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-
-  window.__CODEX_RTL_ACTIVE__ = true;
+  let language = window.__CODEX_ACTION_BOARD_LANGUAGE__;
+  try { language ||= localStorage.getItem("codex-action-board-language"); } catch {}
+  ensureStyle();
+  if (language === "ar") enableRtl();
+  else cleanupRtl();
 })();

@@ -6,12 +6,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 
 const pairs = [
-  ["src/injected.js", "extension/injected.js"],
+  ["src/codex-rtl-engine.js", "extension/codex-rtl-engine.js"],
   ["src/rtl-style.css", "extension/rtl-style.css"],
   ["src/action-board-core.js", "extension/action-board-core.js"],
   ["src/action-board.js", "extension/action-board.js"],
   ["src/action-board.css", "extension/action-board.css"],
-  ["src/background.js", "extension/background.js"]
+  ["src/action-board-background.js", "extension/action-board-background.js"]
 ];
 
 for (const [source, copy] of pairs) {

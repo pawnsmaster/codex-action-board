@@ -1,6 +1,6 @@
 import WebSocket from "ws";
 
-const port = Number(process.env.CODEX_RTL_PORT || 9223);
+const port = Number(process.env.CODEX_ACTION_BOARD_PORT || process.env.CODEX_RTL_PORT || 9223);
 const smoke = process.argv.includes("--smoke");
 const endpoint = `http://127.0.0.1:${port}/json`;
 const response = await fetch(endpoint);
@@ -27,6 +27,7 @@ function inspect(wsUrl) {
       params: {
         expression: `JSON.stringify({
           rtlActive: Boolean(window.__CODEX_RTL_ACTIVE__),
+          language: window.__CODEX_ACTION_BOARD_LANGUAGE__ || 'en',
           actionBoardActive: Boolean(window.__CODEX_ACTION_BOARD_ACTIVE__),
           responseTriggers: document.querySelectorAll('.codex-action-trigger').length,
           panelPresent: Boolean(document.querySelector('.codex-action-board')),
@@ -41,6 +42,13 @@ function inspect(wsUrl) {
             const firstItem = panel?.querySelector('.codex-action-item');
             const itemNumber = firstItem?.querySelector('.codex-action-item__number')?.getBoundingClientRect();
             const itemMoves = firstItem?.querySelector('.codex-action-item__moves')?.getBoundingClientRect();
+            const closeRect = panel?.querySelector('.codex-action-board__close')?.getBoundingClientRect();
+            const headingRect = panel?.querySelector('.codex-action-board__header > div')?.getBoundingClientRect();
+            const closeButton = panel?.querySelector('.codex-action-board__close');
+            const hitAt = (x, y) => {
+              const hit = document.elementFromPoint(x, y);
+              return hit ? { tag: hit.tagName, className: String(hit.className || ''), insideClose: Boolean(hit.closest?.('.codex-action-board__close')) } : null;
+            };
             const result = {
               attempted: true,
               panelOpened: Boolean(panel && !panel.hidden),
@@ -65,7 +73,21 @@ function inspect(wsUrl) {
                 previewAlign: getComputedStyle(panel.querySelector('.codex-action-board__preview pre')).textAlign,
                 previewSummaryAlign: getComputedStyle(panel.querySelector('.codex-action-board__preview summary')).textAlign,
                 insertDirection: getComputedStyle(panel.querySelector('.codex-action-board__insert')).direction,
-                insertAlign: getComputedStyle(panel.querySelector('.codex-action-board__insert')).textAlign
+                insertAlign: getComputedStyle(panel.querySelector('.codex-action-board__insert')).textAlign,
+                headerVerticalDelta: closeRect && headingRect
+                  ? Math.abs((closeRect.y + closeRect.height / 2) - (headingRect.y + headingRect.height / 2))
+                  : null,
+                closePointerEvents: closeButton ? getComputedStyle(closeButton).pointerEvents : null,
+                closeAppRegion: closeButton ? getComputedStyle(closeButton).getPropertyValue('-webkit-app-region') : null,
+                closeSize: closeRect ? { width: closeRect.width, height: closeRect.height } : null,
+                sidePanelHeaderSafeGap: rect && headingRect ? rect.right - headingRect.right : null,
+                closeHits: closeRect ? [
+                  hitAt(closeRect.x + closeRect.width / 2, closeRect.y + closeRect.height / 2),
+                  hitAt(closeRect.x + 4, closeRect.y + 4),
+                  hitAt(closeRect.right - 4, closeRect.y + 4),
+                  hitAt(closeRect.x + 4, closeRect.bottom - 4),
+                  hitAt(closeRect.right - 4, closeRect.bottom - 4)
+                ] : []
               } : null,
               colors: panel && firstField ? {
                 panelForeground: getComputedStyle(panel).color,
@@ -76,13 +98,30 @@ function inspect(wsUrl) {
                 placeholder: getComputedStyle(firstField, '::placeholder').color
               } : null
             };
+            const initialLanguage = panel?.dataset.language;
+            panel?.querySelector('.codex-action-board__language')?.click();
+            const switchedLanguage = panel?.dataset.language;
+            const switchedCloseRect = panel?.querySelector('.codex-action-board__close')?.getBoundingClientRect();
+            result.languageCycle = {
+              initial: initialLanguage,
+              switched: switchedLanguage,
+              rtlActiveAfterSwitch: Boolean(window.__CODEX_RTL_ACTIVE__),
+              rtlRootAfterSwitch: Boolean(document.documentElement.dataset.codexRtlRoot),
+              rtlArtifactsAfterSwitch: document.querySelectorAll('[data-codex-rtl], [data-codex-bidi], [data-codex-code-ltr], [data-codex-ltr-run]').length,
+              panelDirectionAfterSwitch: getComputedStyle(panel).direction,
+              headingAfterSwitch: panel?.querySelector('h2')?.textContent,
+              sidePanelCloseSafeGapAfterSwitch: rect && switchedCloseRect ? rect.right - switchedCloseRect.right : null
+            };
+            panel?.querySelector('.codex-action-board__language')?.click();
+            result.languageCycle.restored = panel?.dataset.language;
+            result.languageCycle.rtlActiveAfterRestore = Boolean(window.__CODEX_RTL_ACTIVE__);
             panel?.querySelector('.codex-action-board__close')?.click();
             result.panelClosed = Boolean(panel?.hidden);
             return result;
           })()` : "null"},
           diagnostics: {
-            styleHasPanelRtl: (document.getElementById('codex-rtl-toolkit-style')?.textContent || '').includes('direction: rtl !important'),
-            styleLength: document.getElementById('codex-rtl-toolkit-style')?.textContent?.length || 0,
+            styleHasPanelRtl: (document.getElementById('codex-action-board-style')?.textContent || '').includes('direction: rtl !important'),
+            styleLength: document.getElementById('codex-action-board-style')?.textContent?.length || 0,
             pendingStyleHasPanelRtl: String(window.__CODEX_RTL_STYLE__ || '').includes('direction: rtl !important'),
             articles: document.querySelectorAll('article').length,
             mains: document.querySelectorAll('main').length,
@@ -110,18 +149,23 @@ function inspect(wsUrl) {
 let verified = 0;
 for (const target of targets) {
   const result = await inspect(target.webSocketDebuggerUrl);
-  if (!result.rtlActive || !result.actionBoardActive || !result.panelPresent || !result.contextActionBridge) {
+  if (!result.actionBoardActive || !result.panelPresent || !result.contextActionBridge || result.rtlActive !== (result.language !== "en")) {
     throw new Error(`Incomplete injection in ${target.title || target.url}: ${JSON.stringify(result)}`);
   }
   if (target.title === "Codex" && result.diagnostics.mains > 0 && result.responseTriggers === 0) {
     throw new Error(`No response triggers were attached in the live Codex renderer: ${JSON.stringify(result.diagnostics)}`);
   }
   if (smoke && result.diagnostics.mains > 0 && result.responseTriggers > 0 && (
-    !result.smoke?.attempted || !result.smoke.panelOpened || !result.smoke.panelClosed || result.smoke.extractedItems < 1
+    !result.smoke?.attempted
+      || !result.smoke.panelOpened
+      || !result.smoke.panelClosed
+      || result.smoke.extractedItems < 1
+      || result.smoke.languageCycle?.restored !== result.smoke.languageCycle?.initial
+      || result.smoke.languageCycle?.switched === result.smoke.languageCycle?.initial
   )) {
     throw new Error(`Live Action Board smoke test failed: ${JSON.stringify(result.smoke)}`);
   }
-  if (smoke && result.diagnostics.mains > 0 && result.diagnostics.desktopMarker && (
+  if (smoke && result.diagnostics.mains > 0 && result.diagnostics.desktopMarker && result.smoke.languageCycle?.initial === "ar" && (
     !["docked", "sidepanel"].includes(result.smoke.mode)
       || result.smoke.rect?.top < 30
       || result.smoke.overflowingTextareas > 0
@@ -137,8 +181,34 @@ for (const target of targets) {
       || result.smoke.rtlLayout?.previewSummaryAlign !== "right"
       || result.smoke.rtlLayout?.insertDirection !== "rtl"
       || result.smoke.rtlLayout?.insertAlign !== "center"
+      || result.smoke.rtlLayout?.headerVerticalDelta > 12
+      || result.smoke.rtlLayout?.closePointerEvents !== "auto"
+      || result.smoke.rtlLayout?.closeAppRegion !== "no-drag"
+      || result.smoke.rtlLayout?.closeSize?.width < 44
+      || result.smoke.rtlLayout?.closeSize?.height < 44
+      || result.smoke.rtlLayout?.closeHits?.some((hit) => !hit?.insideClose)
+      || (result.smoke.mode === "sidepanel" && result.smoke.rtlLayout?.sidePanelHeaderSafeGap < 88)
   )) {
     throw new Error(`Live panel placement or wrapping check failed: ${JSON.stringify(result.smoke)}`);
+  }
+  if (smoke && result.diagnostics.mains > 0 && result.smoke.languageCycle?.switched === "en" && (
+    result.smoke.languageCycle.rtlActiveAfterSwitch
+      || result.smoke.languageCycle.rtlRootAfterSwitch
+      || result.smoke.languageCycle.rtlArtifactsAfterSwitch > 0
+      || result.smoke.languageCycle.panelDirectionAfterSwitch !== "ltr"
+      || result.smoke.languageCycle.headingAfterSwitch !== "Action Board"
+      || (result.smoke.mode === "sidepanel" && result.smoke.languageCycle.sidePanelCloseSafeGapAfterSwitch < 88)
+      || !result.smoke.languageCycle.rtlActiveAfterRestore
+  )) {
+    throw new Error(`Live language switch cleanup failed: ${JSON.stringify(result.smoke.languageCycle)}`);
+  }
+  if (smoke && result.diagnostics.mains > 0 && result.smoke.languageCycle?.switched === "ar" && (
+    !result.smoke.languageCycle.rtlActiveAfterSwitch
+      || !result.smoke.languageCycle.rtlRootAfterSwitch
+      || result.smoke.languageCycle.panelDirectionAfterSwitch !== "rtl"
+      || result.smoke.languageCycle.rtlActiveAfterRestore
+  )) {
+    throw new Error(`Live language switch RTL activation failed: ${JSON.stringify(result.smoke.languageCycle)}`);
   }
   verified += 1;
   console.log(JSON.stringify({ target: target.title || target.url, ...result }));

@@ -21,8 +21,8 @@ Overall risk assessment: acceptable for a small local-rendering utility after do
 ### MEDIUM Local DevTools Port Allows Same-Machine Injection While Codex Is Running
 
 - **Category**: OWASP A05 Security Misconfiguration / Threat Model
-- **File**: `desktop/Launch-CodexRTL.ps1:26`, `desktop/inject.mjs:28`, `desktop/inject.mjs:52`
-- **Evidence**: Codex is launched with a Chromium DevTools port bound to `127.0.0.1`, and the injector sends `Runtime.evaluate` to matching renderer targets. The port is local-only and `desktop/inject.mjs` refuses non-local WebSocket hosts, but any untrusted local process running as the same user while the port is open could attempt to connect to the DevTools endpoint.
+- **File**: `desktop/Launch-CodexActionBoard.ps1:26`, `desktop/inject-action-board.mjs:28`, `desktop/inject-action-board.mjs:52`
+- **Evidence**: Codex is launched with a Chromium DevTools port bound to `127.0.0.1`, and the injector sends `Runtime.evaluate` to matching renderer targets. The port is local-only and `desktop/inject-action-board.mjs` refuses non-local WebSocket hosts, but any untrusted local process running as the same user while the port is open could attempt to connect to the DevTools endpoint.
 - **Mitigations present**: DevTools binds to `127.0.0.1`; target WebSocket hosts are checked before injection; README and `SECURITY.md` warn users not to expose the port.
 - **Remediation**: Keep the port local-only, document the same-machine trust boundary, and close Codex when the injected session is no longer needed. Avoid using this workflow on shared or untrusted Windows accounts.
 - **Effort**: S
@@ -30,8 +30,8 @@ Overall risk assessment: acceptable for a small local-rendering utility after do
 ### LOW Intentional Runtime Evaluation Uses Local Project Assets
 
 - **Category**: OWASP A08 Software and Data Integrity / JavaScript
-- **File**: `desktop/inject.mjs:107`
-- **Evidence**: The desktop injector builds a `Runtime.evaluate` expression and executes the local `src/injected.js` contents in the Codex renderer. This is intentional for the desktop workaround, but any malicious modification to local project files would be executed in the renderer context.
+- **File**: `desktop/inject-action-board.mjs:107`
+- **Evidence**: The desktop injector builds a `Runtime.evaluate` expression and executes the local `src/codex-rtl-engine.js` contents in the Codex renderer. This is intentional for the desktop workaround, but any malicious modification to local project files would be executed in the renderer context.
 - **Mitigations present**: The injected JavaScript and CSS are read from local repo files and embedded with `JSON.stringify`; no code is fetched from the network; the browser extension content script does not use `eval`.
 - **Remediation**: Tell users to download releases from the official repo, review fork diffs, and keep release archives free of generated or auth-related files.
 - **Effort**: S
@@ -39,7 +39,7 @@ Overall risk assessment: acceptable for a small local-rendering utility after do
 ### LOW Dependency Install Should Avoid Lifecycle Scripts
 
 - **Category**: Supply Chain
-- **File**: `desktop/Run-CodexRTL.ps1:37`, `README.md`
+- **File**: `desktop/Run-CodexActionBoard.ps1:37`, `README.md`
 - **Evidence**: The one-click launcher originally used `npm install` for first-time setup. Even with a small dependency tree, npm lifecycle scripts are a known supply-chain execution surface.
 - **Mitigations present**: `package-lock.json` is committed and `npm audit --audit-level=moderate` reports zero vulnerabilities.
 - **Remediation**: Changed first-time setup and documentation to `npm ci --ignore-scripts`.
@@ -51,11 +51,11 @@ Overall risk assessment: acceptable for a small local-rendering utility after do
 
 | Entry Point | Type | Auth Required | Threats Identified |
 | ----------- | ---- | ------------- | ------------------ |
-| `Run-CodexRTL.cmd` | local user launcher | Windows user session | Executes bundled PowerShell script |
-| `desktop/Run-CodexRTL.ps1` | local script | Windows user session | Installs dependencies and launches Codex |
-| `desktop/Launch-CodexRTL.ps1` | local script | Windows user session | Opens localhost-only DevTools |
-| `desktop/inject.mjs` | local Node script | localhost DevTools access | Runtime evaluation into renderer |
-| `extension/injected.js` | browser content script | Chrome extension install | DOM/CSS mutation on matched ChatGPT pages |
+| `Run-CodexActionBoard.cmd` | local user launcher | Windows user session | Executes bundled PowerShell script |
+| `desktop/Run-CodexActionBoard.ps1` | local script | Windows user session | Installs dependencies and launches Codex |
+| `desktop/Launch-CodexActionBoard.ps1` | local script | Windows user session | Opens localhost-only DevTools |
+| `desktop/inject-action-board.mjs` | local Node script | localhost DevTools access | Runtime evaluation into renderer |
+| `extension/codex-rtl-engine.js` | browser content script | Chrome extension install | DOM/CSS mutation on matched ChatGPT pages |
 
 ### Key STRIDE Findings
 
@@ -114,5 +114,5 @@ The extension uses Manifest V3, has no declared permissions, no host permissions
 
 ### Process Improvements
 
-- Require review of any change touching `desktop/inject.mjs`, PowerShell launchers, or `extension/manifest.json`.
+- Require review of any change touching `desktop/inject-action-board.mjs`, PowerShell launchers, or `extension/manifest.json`.
 - Treat new extension permissions as security-sensitive and document why each permission is needed.

@@ -67,3 +67,15 @@ test("formats accepted, rejected, and undecided decisions", () => {
   assert.match(prompt, /نفّذ عناصر «المطلوب تنفيذه» فقط/);
   assert.match(prompt, /اسأل فقط إذا تعذّر التنفيذ/);
 });
+
+test("formats an English execution prompt without Arabic control copy", () => {
+  const prompt = core.formatPrompt([
+    { originalText: "Improve login", editedText: "Improve login", status: "accepted", note: "Keep the current layout", order: 0 },
+    { originalText: "Rewrite navigation", editedText: "Rewrite navigation", status: "rejected", note: "", order: 1 }
+  ], "en");
+  assert.match(prompt, /## Implement/);
+  assert.match(prompt, /Required guidance: Keep the current layout/);
+  assert.match(prompt, /## Excluded — do not implement/);
+  assert.match(prompt, /final source of truth/);
+  assert.doesNotMatch(prompt, /المطلوب تنفيذه|طريقة التنفيذ/);
+});

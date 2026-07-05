@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $files = @(
-  "desktop\Launch-CodexRTL.ps1",
-  "desktop\Run-CodexRTL.ps1"
+  "desktop\Launch-CodexActionBoard.ps1",
+  "desktop\Run-CodexActionBoard.ps1"
 )
 
 foreach ($file in $files) {

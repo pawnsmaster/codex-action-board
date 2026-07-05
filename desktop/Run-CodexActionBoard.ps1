@@ -1,3 +1,8 @@
+param(
+  [ValidateSet("en", "ar")]
+  [string]$Language = "en"
+)
+
 $ErrorActionPreference = "Stop"
 
 function Fail($message) {
@@ -13,11 +18,12 @@ function Info($message) {
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $root
 
-Info "Codex RTL Toolkit"
+Info "Codex Action Board"
+Info "Language: $Language"
 Write-Host ""
 $running = Get-Process -Name Codex -ErrorAction SilentlyContinue
 if ($running) {
-  Write-Host "Codex is running. Closing it before enabling the RTL fix..." -ForegroundColor Yellow
+  Write-Host "Codex is running. Closing it before enabling Action Board..." -ForegroundColor Yellow
   $running | Stop-Process -Force
   Start-Sleep -Seconds 1
 
@@ -42,14 +48,15 @@ if (-not (Test-Path (Join-Path $root "node_modules\ws"))) {
 }
 
 Info "Starting Codex Desktop with localhost-only DevTools..."
-& (Join-Path $PSScriptRoot "Launch-CodexRTL.ps1")
+& (Join-Path $PSScriptRoot "Launch-CodexActionBoard.ps1")
 
 Info "Waiting for Codex to open..."
 Start-Sleep -Seconds 5
 
-Info "Injecting RTL fix..."
+Info "Injecting Action Board..."
+$env:CODEX_ACTION_BOARD_LANGUAGE = $Language
 npm.cmd run inject
 
 Write-Host ""
 Write-Host "Done. Keep this Codex window open and use it normally." -ForegroundColor Green
-Write-Host "If Codex reloads or restarts, run Run-CodexRTL.cmd again."
+Write-Host "If Codex reloads or restarts, run Run-CodexActionBoard.cmd again."

@@ -141,7 +141,6 @@
   max-height: calc(100dvh - var(--codex-ab-safe-top, 0px));
   overflow: hidden;
   color: var(--codex-ab-fg);
-  direction: rtl !important;
   font-family: inherit;
   font-size: 0.875rem;
   line-height: 1.45;
@@ -186,6 +185,12 @@
   box-shadow: none;
 }
 
+@media (min-width: 621px) {
+  .codex-action-board[data-mode="sidepanel"] .codex-action-board__header {
+    padding-right: 96px;
+  }
+}
+
 .codex-action-board[hidden] { display: none; }
 
 .codex-action-board__header,
@@ -198,7 +203,7 @@
 
 .codex-action-board__header {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   direction: ltr;
   justify-content: stretch;
   gap: var(--codex-ab-space-lg);
@@ -208,13 +213,35 @@
 }
 
 .codex-action-board__header > div {
-  direction: rtl;
-  grid-column: 2;
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
-  text-align: right;
 }
 
 .codex-action-board__close {
+  position: relative;
+  z-index: 2;
+  grid-column: 2;
+  grid-row: 1;
+  width: 44px;
+  height: 44px;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-app-region: no-drag;
+}
+
+.codex-action-board__close svg,
+.codex-action-board__close svg * {
+  pointer-events: none;
+}
+
+.codex-action-board[data-language="ar"] .codex-action-board__header {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.codex-action-board[data-language="ar"] .codex-action-board__header > div { grid-column: 2; }
+
+.codex-action-board[data-language="ar"] .codex-action-board__close {
   grid-column: 1;
   margin-inline-end: var(--codex-ab-space-sm);
 }
@@ -266,6 +293,7 @@
 }
 
 .codex-action-board__bulk-button,
+.codex-action-board__language,
 .codex-action-item__status,
 .codex-action-board__insert {
   min-height: 36px;
@@ -366,7 +394,8 @@
   font-size: 0.75rem;
 }
 
-[data-codex-action-board] .codex-action-item textarea {
+[data-codex-action-board][data-language="ar"] .codex-action-item textarea,
+[data-codex-action-board][data-language="en"] .codex-action-item textarea {
   box-sizing: border-box;
   width: 100%;
   min-height: 40px;
@@ -378,12 +407,20 @@
   background: var(--codex-ab-surface);
   border: 1px solid var(--codex-ab-border);
   border-radius: var(--codex-ab-radius-sm);
-  direction: rtl !important;
   overflow-x: hidden;
   overflow-wrap: anywhere !important;
-  text-align: right !important;
   unicode-bidi: plaintext !important;
   white-space: pre-wrap !important;
+}
+
+[data-codex-action-board][data-language="ar"] .codex-action-item textarea {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+[data-codex-action-board][data-language="en"] .codex-action-item textarea {
+  direction: ltr !important;
+  text-align: left !important;
 }
 
 [data-codex-action-board] .codex-action-item textarea::placeholder {

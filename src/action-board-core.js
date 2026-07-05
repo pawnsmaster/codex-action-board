@@ -105,16 +105,46 @@
     return blocks.map((block, index) => createItem(block, index));
   }
 
-  function formatPrompt(items) {
+  const PROMPT_COPY = {
+    ar: {
+      groups: { accepted: "المطلوب تنفيذه", rejected: "مستبعد — لا تنفّذ", undecided: "مؤجّل — لا تنفّذ" },
+      intro: "طبّق القرارات التالية على ردك السابق. هذه القائمة هي المرجع النهائي؛ إذا تعارضت مع أي اقتراح سابق، اتبعها هي.",
+      directive: "توجيه ملزم",
+      priority: "الأولوية",
+      method: "طريقة التنفيذ",
+      rules: [
+        "نفّذ عناصر «المطلوب تنفيذه» فقط، وبالترتيب الموضح.",
+        "التزم بالنص الحالي والتوجيهات الملحقة بكل عنصر، ولا توسّع نطاقه من عندك.",
+        "لا تنفّذ العناصر المستبعدة أو المؤجلة، ولا تستبدلها ببدائل.",
+        "ابدأ بخطة قصيرة ثم نفّذ مباشرة. اسأل فقط إذا تعذّر التنفيذ أو احتجت قرارًا غير موجود هنا.",
+        "بعد الانتهاء، لخّص ما نُفّذ والفحوص التي أجريتها."
+      ]
+    },
+    en: {
+      groups: { accepted: "Implement", rejected: "Excluded — do not implement", undecided: "Deferred — do not implement" },
+      intro: "Apply the following decisions to your previous response. This list is the final source of truth; if it conflicts with an earlier suggestion, follow this list.",
+      directive: "Required guidance",
+      priority: "Priority",
+      method: "Execution instructions",
+      rules: [
+        "Implement only the items under “Implement”, in the order shown.",
+        "Follow each item's current wording and attached guidance; do not expand its scope.",
+        "Do not implement excluded or deferred items, and do not replace them with alternatives.",
+        "Start with a short plan, then implement directly. Ask only if implementation is blocked or requires a decision not provided here.",
+        "When finished, summarize what you implemented and the checks you ran."
+      ]
+    }
+  };
+
+  function formatPrompt(items, language = "ar") {
+    const copy = PROMPT_COPY[language] || PROMPT_COPY.ar;
     const ordered = [...(items || [])].sort((a, b) => a.order - b.order);
     const groups = [
-      ["accepted", "المطلوب تنفيذه"],
-      ["rejected", "مستبعد — لا تنفّذ"],
-      ["undecided", "مؤجّل — لا تنفّذ"]
+      ["accepted", copy.groups.accepted],
+      ["rejected", copy.groups.rejected],
+      ["undecided", copy.groups.undecided]
     ];
-    const sections = [
-      "طبّق القرارات التالية على ردك السابق. هذه القائمة هي المرجع النهائي؛ إذا تعارضت مع أي اقتراح سابق، اتبعها هي."
-    ];
+    const sections = [copy.intro];
 
     for (const [status, title] of groups) {
       const group = ordered.filter((item) => item.status === status);
@@ -123,20 +153,14 @@
       group.forEach((item, index) => {
         const text = normalizeActionText(item.editedText || item.originalText);
         sections.push(`${index + 1}. ${text.replace(/\n/g, "\n   ")}`);
-        if (item.note?.trim()) sections.push(`   - توجيه ملزم: ${normalizeActionText(item.note).replace(/\n/g, "\n     ")}`);
-        if (item.priority) sections.push(`   الأولوية: ${item.priority}`);
+        if (item.note?.trim()) sections.push(`   - ${copy.directive}: ${normalizeActionText(item.note).replace(/\n/g, "\n     ")}`);
+        if (item.priority) sections.push(`   ${copy.priority}: ${item.priority}`);
       });
     }
 
     sections.push(
-      "## طريقة التنفيذ",
-      [
-        "- نفّذ عناصر «المطلوب تنفيذه» فقط، وبالترتيب الموضح.",
-        "- التزم بالنص الحالي والتوجيهات الملحقة بكل عنصر، ولا توسّع نطاقه من عندك.",
-        "- لا تنفّذ العناصر المستبعدة أو المؤجلة، ولا تستبدلها ببدائل.",
-        "- ابدأ بخطة قصيرة ثم نفّذ مباشرة. اسأل فقط إذا تعذّر التنفيذ أو احتجت قرارًا غير موجود هنا.",
-        "- بعد الانتهاء، لخّص ما نُفّذ والفحوص التي أجريتها."
-      ].join("\n")
+      `## ${copy.method}`,
+      copy.rules.map((rule) => `- ${rule}`).join("\n")
     );
     return sections.join("\n\n");
   }

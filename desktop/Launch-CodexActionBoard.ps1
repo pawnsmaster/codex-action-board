@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 
-$port = if ($env:CODEX_RTL_PORT) { $env:CODEX_RTL_PORT } else { "9223" }
+$port = if ($env:CODEX_ACTION_BOARD_PORT) { $env:CODEX_ACTION_BOARD_PORT } elseif ($env:CODEX_RTL_PORT) { $env:CODEX_RTL_PORT } else { "9223" }
 if (-not ($port -match '^\d+$') -or [int]$port -lt 1024 -or [int]$port -gt 65535) {
-  Write-Error "CODEX_RTL_PORT must be an integer between 1024 and 65535."
+  Write-Error "CODEX_ACTION_BOARD_PORT must be an integer between 1024 and 65535."
 }
 
 $package = Get-AppxPackage -Name OpenAI.Codex -ErrorAction SilentlyContinue

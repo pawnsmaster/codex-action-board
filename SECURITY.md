@@ -2,7 +2,7 @@
 
 ## Scope
 
-Codex RTL Toolkit changes local rendering only. It does not read, store, upload, or modify conversation data.
+Codex Action Board changes local rendering and review UI only. It does not upload or send conversation data automatically.
 
 ## Desktop Security Model
 
@@ -20,7 +20,7 @@ The injector also refuses non-local WebSocket targets. Do not expose the debuggi
 
 - Run the launcher only on your own machine.
 - Close Codex when you no longer need the injected session.
-- Do not change `CODEX_RTL_PORT` to a privileged or externally exposed port.
+- Do not change `CODEX_ACTION_BOARD_PORT` or the legacy `CODEX_RTL_PORT` to a privileged or externally exposed port.
 - Review changes before running scripts from forks.
 - Prefer official GitHub releases from this repository over copied scripts or modified ZIP files.
 

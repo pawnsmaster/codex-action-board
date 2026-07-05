@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
@@ -42,10 +42,58 @@ const port = server.address().port;
 const browser = await chromium.launch({ headless: true });
 
 try {
+  const defaultPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  await defaultPage.goto(`http://127.0.0.1:${port}/tests/fixture.html`);
+  await defaultPage.locator(".codex-action-trigger").click();
+  await defaultPage.locator(".codex-action-board").waitFor({ state: "visible" });
+  assert.equal(await defaultPage.locator(".codex-action-board").getAttribute("data-language"), "en", "a clean first run should default to English");
+  assert.equal(await defaultPage.locator(".codex-action-board h2").innerText(), "Action Board", "default UI should be English");
+  assert.equal(await defaultPage.locator(".codex-action-board").evaluate((element) => getComputedStyle(element).direction), "ltr", "default board layout should be LTR");
+  assert.equal(await defaultPage.evaluate(() => Boolean(window.__CODEX_RTL_ACTIVE__)), false, "a clean English first run must not enable the RTL engine");
+  assert.equal(await defaultPage.evaluate(() => Boolean(document.getElementById("codex-action-board-style"))), true, "a clean English first run must still install Action Board CSS");
+  await defaultPage.locator(".codex-action-board__close").click();
+  await defaultPage.evaluate(() => {
+    const item = document.querySelector("article ol > li:nth-child(1)");
+    const range = document.createRange();
+    range.selectNodeContents(item);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+  await defaultPage.locator(".codex-action-selection-trigger").waitFor({ state: "visible" });
+  const defaultSelectionButtonBox = await defaultPage.locator(".codex-action-selection-trigger").boundingBox();
+  const defaultSelectedItemBox = await defaultPage.locator("article ol > li").first().boundingBox();
+  assert.ok(
+    defaultSelectionButtonBox.x >= defaultSelectedItemBox.x + defaultSelectedItemBox.width / 2,
+    "English selection trigger should stay on the right side of the selected text"
+  );
+  await defaultPage.close();
+
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  await page.addInitScript(() => localStorage.setItem("codex-action-board-language", "ar"));
   await page.goto(`http://127.0.0.1:${port}/tests/fixture.html`);
 
   assert.equal(await page.locator(".codex-action-trigger").count(), 1, "response trigger should be injected");
+  const responseTriggerPlacement = await page.locator(".codex-action-trigger").evaluate((trigger) => ({
+    parentClass: trigger.parentElement?.className || "",
+    insideCopyTooltipTrigger: Boolean(trigger.closest(".copy-tooltip-trigger"))
+  }));
+  assert.match(responseTriggerPlacement.parentClass, /copy-tooltip-trigger|actions/, "response trigger should stay visually grouped with the native response actions");
+  const assistantCopyTitle = await page.locator("article[data-message-author-role='assistant'] .actions button[aria-label='Copy']").getAttribute("title");
+  assert.equal(assistantCopyTitle, "Copy", "Action Board must not mutate native Copy button attributes");
+  const responseTriggerLabels = await page.locator(".codex-action-trigger").evaluate((trigger) => ({
+    title: trigger.getAttribute("title"),
+    aria: trigger.getAttribute("aria-label")
+  }));
+  assert.equal(responseTriggerLabels.title, null, "response trigger should not show a native tooltip");
+  assert.ok(responseTriggerLabels.aria, "response trigger should keep an accessible label");
+  assert.doesNotMatch(responseTriggerLabels.aria, /copy/i, "response trigger must not reuse the Copy button label");
+  await page.locator(".codex-action-trigger").hover();
+  assert.equal(
+    await page.locator("article[data-message-author-role='assistant'] .actions button[aria-label='Copy']").getAttribute("title"),
+    "Copy",
+    "hovering Action Board must not dispatch synthetic hover cleanup into native Codex controls"
+  );
   assert.equal(await page.locator(".codex-action-side-panel-entry").count(), 1, "native side panel should receive an Action Board entry");
   assert.equal(await page.locator(".codex-action-selection-trigger").count(), 1, "selection floating trigger should be injected once");
   assert.equal(await page.locator(".codex-action-selection-trigger").isHidden(), true, "selection floating trigger should start hidden");
@@ -56,6 +104,9 @@ try {
   assert.equal(await page.locator(".codex-action-trigger").count(), 1, "reinjection should not duplicate response triggers");
   assert.equal(await page.locator(".codex-action-side-panel-entry").count(), 1, "reinjection should not duplicate side panel entries");
   assert.equal(await page.locator(".codex-action-selection-trigger").count(), 1, "reinjection should not duplicate selection triggers");
+  await page.locator(".codex-action-trigger").evaluate((trigger) => trigger.remove());
+  await page.waitForFunction(() => document.querySelectorAll(".codex-action-trigger").length === 1);
+  assert.equal(await page.locator(".codex-action-trigger").count(), 1, "navigation watchdog should restore a removed response trigger without duplicates");
   const sidePanelTypography = await page.evaluate(() => {
     const action = document.querySelector(".codex-action-side-panel-entry");
     const sideChat = Array.from(document.querySelectorAll(".native-side-panel button")).find((button) => button.textContent.includes("Side chat"));
@@ -101,7 +152,12 @@ try {
   const nativeSidePanelBox = await page.locator(".native-side-panel").boundingBox();
   assert.ok(Math.abs(desktopBox.width - nativeSidePanelBox.width) <= 1, "Action Board should use the current native side panel width");
   const closeBox = await page.locator(".codex-action-board__close").boundingBox();
+  const headingBox = await page.locator(".codex-action-board__header > div").boundingBox();
   assert.ok(closeBox.x + closeBox.width / 2 < desktopBox.x + desktopBox.width / 2, "panel close button should stay on the inner side away from the app window close button");
+  assert.ok(closeBox.width >= 44 && closeBox.height >= 44, "close button should provide a reliable 44px hit target");
+  assert.ok(Math.abs((closeBox.y + closeBox.height / 2) - (headingBox.y + headingBox.height / 2)) <= 12, "Arabic close button should share the title row instead of dropping below it");
+  assert.ok(desktopBox.x + desktopBox.width - headingBox.x - headingBox.width >= 88, "Arabic title should reserve the native side-panel controls area");
+  assert.equal(await page.locator(".codex-action-board__close svg").evaluate((element) => getComputedStyle(element).pointerEvents), "none", "close icon should not intercept pointer events");
   const rtlLayout = await page.evaluate(() => {
     const panel = document.querySelector(".codex-action-board");
     const item = panel.querySelector(".codex-action-item");
@@ -143,6 +199,29 @@ try {
     assert.deepEqual(rtlText[key], { direction: "rtl", textAlign: "right" }, `${key} should be fully RTL`);
   }
   assert.deepEqual(rtlText.insert, { direction: "rtl", textAlign: "center" }, "insert action should keep RTL text centered");
+  await page.locator(".codex-action-board__language").click();
+  assert.equal(await page.locator(".codex-action-board").getAttribute("data-language"), "en");
+  assert.equal(await page.locator(".codex-action-board").evaluate((element) => getComputedStyle(element).direction), "ltr");
+  assert.equal(await page.locator(".codex-action-board h2").innerText(), "Action Board");
+  const englishCloseBox = await page.locator(".codex-action-board__close").boundingBox();
+  assert.ok(desktopBox.x + desktopBox.width - englishCloseBox.x - englishCloseBox.width >= 88, "English close button should reserve the native side-panel controls area");
+  const englishHeaderAlignment = await page.evaluate(() => {
+    const close = document.querySelector(".codex-action-board__close").getBoundingClientRect();
+    const heading = document.querySelector(".codex-action-board__header > div").getBoundingClientRect();
+    return Math.abs((close.y + close.height / 2) - (heading.y + heading.height / 2));
+  });
+  assert.ok(englishHeaderAlignment <= 12, "English close button should share the same title-row alignment");
+  assert.equal(await page.locator(".codex-action-board__insert").innerText(), "Insert into composer");
+  assert.equal(await page.evaluate(() => document.documentElement.hasAttribute("data-codex-rtl-root")), false, "English mode should remove the Codex RTL root marker");
+  assert.equal(await page.evaluate(() => window.__CODEX_RTL_ACTIVE__), false, "English mode should stop RTL processing");
+  assert.equal(await page.evaluate(() => Boolean(window.__CODEX_RTL_OBSERVER__)), false, "English mode should disconnect and remove the RTL observer");
+  assert.equal(await page.locator("[data-codex-rtl], [data-codex-bidi], [data-codex-code-ltr], [data-codex-ltr-run]").count(), 0, "English mode should clean prior RTL mutations");
+  assert.match(await page.locator(".codex-action-board__preview pre").textContent(), /final source of truth/);
+  await page.locator(".codex-action-board__language").click();
+  assert.equal(await page.locator(".codex-action-board").getAttribute("data-language"), "ar");
+  assert.equal(await page.locator(".codex-action-board").evaluate((element) => getComputedStyle(element).direction), "rtl");
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.codexRtlRoot), "true", "switching back to Arabic should reactivate RTL");
+  assert.equal(await page.evaluate(() => window.__CODEX_RTL_ACTIVE__), true);
   const colors = await page.evaluate(() => {
     const panel = document.querySelector(".codex-action-board");
     const summary = panel.querySelector(".codex-action-board__summary");
@@ -160,27 +239,26 @@ try {
   assert.ok(contrast(colors.mutedForeground, colors.panelBackground) >= 4.5, "secondary text contrast must meet WCAG AA");
   assert.ok(contrast(colors.fieldForeground, colors.fieldBackground) >= 4.5, `field text contrast must meet WCAG AA: ${JSON.stringify(colors)}`);
   assert.ok(contrast(colors.placeholder, colors.fieldBackground) >= 4.5, `placeholder contrast must meet WCAG AA: ${JSON.stringify(colors)}`);
-  assert.equal(await page.locator(".codex-action-item").count(), 27, "split mode should extract nested bullets as separate decisions");
-  assert.match(await page.locator(".codex-action-board__mode-toggle").getAttribute("title"), /ضم النقاط الفرعية/);
-  assert.match(await page.locator(".codex-action-item").nth(1).locator(".codex-action-item__text").inputValue(), /Open item card/);
-  assert.match(await page.locator(".codex-action-board__summary").getAttribute("aria-label"), /27 غير محسوم/);
-  assert.deepEqual(
-    await page.locator(".codex-action-board__summary-stat").allTextContents(),
-    ["0 مقبول", "0 مرفوض", "27 غير محسوم"],
-    "each RTL summary count must remain isolated with its own status"
-  );
+  assert.equal(await page.locator(".codex-action-board__mode-toggle").getAttribute("data-mode"), "grouped", "sub-items should be grouped by default");
+  assert.equal(await page.locator(".codex-action-item").count(), 25, "grouped mode should keep nested bullets inside their parent action by default");
+  const firstGroupedActionText = await page.locator(".codex-action-item").first().locator(".codex-action-item__text").inputValue();
+  assert.match(firstGroupedActionText, /\n\s+- Open item card\n\s+- Copy item number/, "default grouped mode should keep nested bullets on separate lines");
+  assert.match(await page.locator(".codex-action-board__summary").getAttribute("aria-label"), /25 /);
+  const summaryStats = await page.locator(".codex-action-board__summary-stat").allTextContents();
+  assert.equal(summaryStats.length, 3, "each RTL summary count must remain isolated with its own status");
+  assert.match(summaryStats.at(-1), /^25 /, "undecided summary should show the grouped item count");
   assert.equal(
     await page.locator(".codex-action-board__summary-stat").first().evaluate((element) => getComputedStyle(element).direction),
     "ltr",
     "mixed numeric status pairs should have a stable visual order"
   );
   await page.locator(".codex-action-board__mode-toggle").click();
-  assert.equal(await page.locator(".codex-action-item").count(), 25, "grouped mode should keep nested bullets inside their parent action");
-  const firstActionText = await page.locator(".codex-action-item").first().locator(".codex-action-item__text").inputValue();
-  assert.match(firstActionText, /\n\s+- Open item card\n\s+- Copy item number/, "grouped mode should keep nested bullets on separate lines");
-  assert.match(await page.locator(".codex-action-board__mode-toggle").getAttribute("title"), /تفصيل النقاط الفرعية/);
+  assert.equal(await page.locator(".codex-action-board__mode-toggle").getAttribute("data-mode"), "split");
+  assert.equal(await page.locator(".codex-action-item").count(), 27, "split mode should extract nested bullets as separate decisions");
+  assert.match(await page.locator(".codex-action-item").nth(1).locator(".codex-action-item__text").inputValue(), /Open item card/);
   await page.locator(".codex-action-board__mode-toggle").click();
-  assert.equal(await page.locator(".codex-action-item").count(), 27, "mode toggle should switch back to split mode");
+  assert.equal(await page.locator(".codex-action-board__mode-toggle").getAttribute("data-mode"), "grouped");
+  assert.equal(await page.locator(".codex-action-item").count(), 25, "mode toggle should switch back to grouped mode");
   await page.locator(".codex-action-board__close").click();
   await page.keyboard.press("Control+Shift+A");
   assert.equal(await page.locator(".codex-action-board").isHidden(), true, "Ctrl+Shift+A must not trigger Action Board because Codex uses it for archive");
@@ -209,13 +287,17 @@ try {
   );
   await page.locator(".codex-action-selection-trigger").click();
   await page.locator(".codex-action-board").waitFor({ state: "visible" });
-  assert.equal(await page.locator(".codex-action-item").count(), 3, "selection floating trigger should split nested bullets by default");
-  assert.match(await page.locator(".codex-action-item").nth(1).locator(".codex-action-item__text").inputValue(), /Open item card/);
-  await page.locator(".codex-action-board__mode-toggle").click();
-  assert.equal(await page.locator(".codex-action-item").count(), 1, "selection toggle should group nested bullets inside the parent decision");
+  assert.equal(await page.locator(".codex-action-board__mode-toggle").getAttribute("data-mode"), "grouped");
+  assert.equal(await page.locator(".codex-action-item").count(), 1, "selection floating trigger should group nested bullets by default");
   const selectedOnlyText = await page.locator(".codex-action-item").first().locator(".codex-action-item__text").inputValue();
   assert.match(selectedOnlyText, /\n\s+- Open item card\n\s+- Copy item number/, "selection grouped mode should keep nested bullets on separate lines");
   assert.doesNotMatch(selectedOnlyText, /authentication/, "selection board should not reuse unrelated stale items");
+  await page.locator(".codex-action-board__mode-toggle").click();
+  assert.equal(await page.locator(".codex-action-board__mode-toggle").getAttribute("data-mode"), "split");
+  assert.equal(await page.locator(".codex-action-item").count(), 3, "selection toggle should split nested bullets into separate decisions");
+  assert.match(await page.locator(".codex-action-item").nth(1).locator(".codex-action-item__text").inputValue(), /Open item card/);
+  await page.locator(".codex-action-board__mode-toggle").click();
+  assert.equal(await page.locator(".codex-action-board__mode-toggle").getAttribute("data-mode"), "grouped");
 
   await page.evaluate(() => {
     const item = document.querySelector("article ol > li:nth-child(2)");
@@ -232,7 +314,6 @@ try {
   const secondSelectionText = await page.locator(".codex-action-item").first().locator(".codex-action-item__text").inputValue();
   assert.match(secondSelectionText, /authentication/, "selection board should use the newly selected text");
   assert.doesNotMatch(secondSelectionText, /Open item card/, "selection board should not reuse previous selected list items");
-  await page.locator(".codex-action-board__mode-toggle").click();
   await page.locator(".codex-action-board__close").click();
 
   await page.evaluate(() => {
@@ -247,8 +328,10 @@ try {
   await page.locator(".codex-action-selection-trigger").waitFor({ state: "visible" });
   await page.locator(".codex-action-selection-trigger").click();
   await page.locator(".codex-action-board").waitFor({ state: "visible" });
-  assert.equal(await page.locator(".codex-action-item").count(), 2, "selecting sibling bullets must not add a duplicate aggregate action");
-  assert.match(await page.locator(".codex-action-item").first().locator(".codex-action-item__text").inputValue(), /authentication/);
+  assert.equal(await page.locator(".codex-action-item").count(), 1, "grouped sibling selections should stay as one aggregate action");
+  const siblingSelectionText = await page.locator(".codex-action-item").first().locator(".codex-action-item__text").inputValue();
+  assert.match(siblingSelectionText, /authentication/);
+  assert.match(siblingSelectionText, /\n\s+- /, "grouped sibling selection should preserve the second selected bullet on its own line");
   await page.locator(".codex-action-board__close").click();
   await page.evaluate(() => window.getSelection()?.removeAllRanges());
   await page.locator(".codex-action-trigger").click();
@@ -258,7 +341,7 @@ try {
   await twentiethItem.evaluate((element) => element.scrollIntoView({ block: "center" }));
   const listBeforeStatusChange = await page.locator(".codex-action-board__list").evaluate((element) => element.scrollTop);
   await twentiethItem.evaluate((element) => {
-    const accept = Array.from(element.querySelectorAll("button")).find((button) => button.textContent?.includes("قبول"));
+    const accept = element.querySelector('button[data-status="accepted"]');
     accept.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     accept.click();
   });
@@ -266,23 +349,23 @@ try {
   assert.ok(listAfterStatusChange > 0, "changing item 20 must not jump back to the top");
   assert.ok(Math.abs(listAfterStatusChange - listBeforeStatusChange) <= 64, `changing item 20 must not make a large scroll jump: before=${listBeforeStatusChange}, after=${listAfterStatusChange}`);
 
-  await items.nth(0).getByRole("button", { name: "قبول" }).click();
-  await items.nth(0).locator(".codex-action-item__text").fill("تحسين شاشة تسجيل الدخول دون تغيير التخطيط.");
-  await items.nth(0).locator(".codex-action-item__note-label textarea").fill("غيّر التحقق فقط");
-  await items.nth(1).getByRole("button", { name: "رفض" }).click();
-  await items.nth(2).getByRole("button", { name: "قبول" }).click();
+  await items.nth(0).locator('button[data-status="accepted"]').click();
+  await items.nth(0).locator(".codex-action-item__text").fill("طھط­ط³ظٹظ† ط´ط§ط´ط© طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ط¯ظˆظ† طھط؛ظٹظٹط± ط§ظ„طھط®ط·ظٹط·.");
+  await items.nth(0).locator(".codex-action-item__note-label textarea").fill("ط؛ظٹظ‘ط± ط§ظ„طھط­ظ‚ظ‚ ظپظ‚ط·");
+  await items.nth(1).locator('button[data-status="rejected"]').click();
+  await items.nth(2).locator('button[data-status="accepted"]').click();
 
   const preview = page.locator(".codex-action-board__preview");
   await preview.locator("summary").click();
   const previewText = await preview.locator("pre").innerText();
   assert.match(previewText, /## المطلوب تنفيذه/);
-  assert.match(previewText, /غيّر التحقق فقط/);
+  assert.match(previewText, /ط؛ظٹظ‘ط± ط§ظ„طھط­ظ‚ظ‚ ظپظ‚ط·/);
   assert.match(previewText, /## مستبعد — لا تنفّذ/);
 
   const desktopScreenshot = join(tmpdir(), "codex-action-board-desktop.png");
   await page.screenshot({ path: desktopScreenshot, fullPage: true });
 
-  await page.getByRole("button", { name: "إدراج في مربع كتابة Codex" }).click();
+  await page.locator(".codex-action-board__insert").click();
   const composerValue = await page.locator("form textarea").inputValue();
   assert.match(composerValue, /هذه القائمة هي المرجع النهائي/);
   assert.match(composerValue, /لا تنفّذ العناصر المستبعدة أو المؤجلة/);
