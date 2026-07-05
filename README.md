@@ -10,6 +10,19 @@ Codex Action Board turns an assistant response into a local checklist inside Cod
 
 Click the demo to open the higher-quality view.
 
+## Quick Start
+
+**Download, extract, and double-click `Run-CodexActionBoard.cmd`.**
+
+1. Download [`codex-action-board-v0.1.0.zip`](https://github.com/pawnsmaster/codex-action-board/releases/latest/download/codex-action-board-v0.1.0.zip).
+2. Extract the ZIP.
+3. Save any unfinished input in Codex.
+4. Double-click `Run-CodexActionBoard.cmd` for English, or `Run-CodexActionBoard-Arabic.cmd` for Arabic/RTL.
+
+Requirements: Windows, Node.js 20+, and Codex Desktop.
+
+Codex may remain active after its window is closed. The launcher safely closes any running Codex processes, starts a fresh session with a localhost-only DevTools port, and injects Action Board automatically.
+
 ## Why this exists
 
 Without a review layer, follow-up prompts get messy fast:
@@ -90,19 +103,6 @@ Action Board can be opened from:
 - the keyboard shortcut `Ctrl+Alt+L`.
 
 The response button is intentionally conservative: Action Board only adds it when it can identify the message as an assistant response. This avoids placing action controls on user messages or unrelated UI. If the button does not appear on a response because Codex changed its markup, select the relevant text manually; the floating Action Board button will appear for the selection.
-
-## Quick Start
-
-**Download, extract, and double-click `Run-CodexActionBoard.cmd`.**
-
-1. Download [`codex-action-board-v0.1.0.zip`](https://github.com/pawnsmaster/codex-action-board/releases/latest/download/codex-action-board-v0.1.0.zip).
-2. Extract the ZIP.
-3. Save any unfinished input in Codex.
-4. Double-click `Run-CodexActionBoard.cmd` for English, or `Run-CodexActionBoard-Arabic.cmd` for Arabic/RTL.
-
-Requirements: Windows, Node.js 20+, and Codex Desktop.
-
-Codex may remain active after its window is closed. The launcher safely closes any running Codex processes, starts a fresh session with a localhost-only DevTools port, and injects Action Board automatically.
 
 ## Manual Start
 
