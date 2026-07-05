@@ -8,7 +8,7 @@ Codex Action Board turns an assistant response into a local checklist inside Cod
 
 [![Codex Action Board demo](docs/assets/demo.gif)](docs/demo.md)
 
-Click the demo to open the full-quality view.
+Click the demo to open the higher-quality view.
 
 ## Why this exists
 
@@ -49,7 +49,7 @@ Action Board was built for mixed Arabic/English Codex conversations.
 
 [![Arabic and RTL support](docs/assets/arabic-rtl.gif)](docs/arabic-rtl-demo.md)
 
-Click the Arabic/RTL demo to open the full-quality view.
+Click the Arabic/RTL demo to open the higher-quality view.
 
 In Arabic mode:
 
